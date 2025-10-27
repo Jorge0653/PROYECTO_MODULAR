@@ -136,11 +136,6 @@ class CalibrationDialog(QDialog):
         self.point2_group.setLayout(point2_layout)
         layout.addWidget(self.point2_group)
         
-        # Conectar cambio de modo
-        self.radio_1point.toggled.connect(self._on_mode_changed)
-        self.radio_2point.toggled.connect(self._on_mode_changed)
-        self._on_mode_changed()  # Aplicar estado inicial
-        
         # Botones
         btn_layout = QHBoxLayout()
         
@@ -156,6 +151,11 @@ class CalibrationDialog(QDialog):
         btn_layout.addWidget(btn_cancel)
         
         layout.addLayout(btn_layout)
+        
+        # Conectar cambio de modo
+        self.radio_1point.toggled.connect(self._on_mode_changed)
+        self.radio_2point.toggled.connect(self._on_mode_changed)
+        self._on_mode_changed()  # Aplicar estado inicial
     
     def _on_mode_changed(self):
         """Actualiza UI según el modo seleccionado."""
