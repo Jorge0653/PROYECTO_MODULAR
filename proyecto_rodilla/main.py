@@ -14,7 +14,7 @@ from gui import MainWindow
 def main():
     """Punto de entrada principal."""
     app = QApplication(sys.argv)
-    app.setStyle('Fusion')
+    app.setStyle('qtmodern-dark')  # Tema oscuro moderno
     
     # Configurar estilo global
     app.setStyleSheet("""

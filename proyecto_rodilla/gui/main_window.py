@@ -18,6 +18,7 @@ class MainWindow(QMainWindow):
         
         # Referencia a ventanas secundarias
         self.realtime_window = None
+        self.settings_window = None
         
         self._create_ui()
     
@@ -55,7 +56,6 @@ class MainWindow(QMainWindow):
         # ========== BOTONES DEL MENÚ ==========
         
         # 1. Análisis en Tiempo Real (IMPLEMENTADO)
-        # 1. Análisis en Tiempo Real (IMPLEMENTADO)
         btn_realtime, container_realtime = self._create_menu_button(
             "📊  Análisis en Tiempo Real",
             "Monitoreo continuo de EMG, ángulo de rodilla y métricas en vivo",
@@ -63,7 +63,6 @@ class MainWindow(QMainWindow):
         )
         btn_realtime.clicked.connect(self._open_realtime_analysis)
         main_layout.addWidget(container_realtime)
-        # 2. Ejercicios Guiados (PLACEHOLDER)
         # 2. Ejercicios Guiados (PLACEHOLDER)
         btn_exercises, container_exercises = self._create_menu_button(
             "🎯  Ejercicios Guiados",
@@ -73,7 +72,6 @@ class MainWindow(QMainWindow):
         btn_exercises.clicked.connect(self._show_not_implemented)
         main_layout.addWidget(container_exercises)
         # 3. Grabación de Sesión (PLACEHOLDER)
-        # 3. Grabación de Sesión (PLACEHOLDER)
         btn_record, container_record = self._create_menu_button(
             "💾  Grabación de Sesión",
             "Grabar datos completos para análisis posterior",
@@ -82,7 +80,6 @@ class MainWindow(QMainWindow):
         btn_record.clicked.connect(self._show_not_implemented)
         main_layout.addWidget(container_record)
         # 4. Análisis Offline (PLACEHOLDER)
-        # 4. Análisis Offline (PLACEHOLDER)
         btn_offline, container_offline = self._create_menu_button(
             "📂  Análisis de Datos Guardados",
             "Procesar y analizar sesiones previamente grabadas",
@@ -90,14 +87,13 @@ class MainWindow(QMainWindow):
         )
         btn_offline.clicked.connect(self._show_not_implemented)
         main_layout.addWidget(container_offline)
-        # 5. Configuración (PLACEHOLDER)
-        # 5. Configuración (PLACEHOLDER)
+        # 5. Configuración del sistema
         btn_config, container_config = self._create_menu_button(
             "⚙️   Configuración del Sistema",
             "Parámetros de filtrado, calibración y visualización",
-            enabled=False
+            enabled=True
         )
-        btn_config.clicked.connect(self._show_not_implemented)
+        btn_config.clicked.connect(self._open_settings)
         main_layout.addWidget(container_config)
         main_layout.addStretch()
         
@@ -135,8 +131,7 @@ class MainWindow(QMainWindow):
         footer.setStyleSheet("color: #95a5a6; font-size: 9pt; padding-top: 10px;")
         main_layout.addWidget(footer)
     
-    def _create_menu_button(self, text: str, description: str, enabled: bool = True) -> QPushButton:
-    #def _create_menu_button(self, text: str, description: str, enabled: bool = True):
+    def _create_menu_button(self, text: str, description: str, enabled: bool = True) -> tuple[QPushButton, QWidget]:
         """Crea un botón del menú con estilo consistente."""
         container = QWidget()
         layout = QVBoxLayout(container)
@@ -184,10 +179,10 @@ class MainWindow(QMainWindow):
         desc_label.setWordWrap(True)
         
         layout.addWidget(btn)
-        layout.addWidget(btn)
         layout.addWidget(desc_label)
         
         return btn, container
+
     def _open_realtime_analysis(self):
         """Abre la ventana de análisis en tiempo real."""
         from .realtime_analysis import RealtimeAnalysisWindow
@@ -198,6 +193,17 @@ class MainWindow(QMainWindow):
         else:
             self.realtime_window.raise_()
             self.realtime_window.activateWindow()
+
+    def _open_settings(self):
+        """Abre el panel de configuración."""
+        from .settings_window import SettingsWindow
+
+        if self.settings_window is None or not self.settings_window.isVisible():
+            self.settings_window = SettingsWindow(self)
+            self.settings_window.show()
+        else:
+            self.settings_window.raise_()
+            self.settings_window.activateWindow()
     
     def _show_not_implemented(self):
         """Muestra mensaje de función no implementada."""
@@ -223,6 +229,8 @@ class MainWindow(QMainWindow):
             # Cerrar ventanas secundarias si están abiertas
             if self.realtime_window and self.realtime_window.isVisible():
                 self.realtime_window.close()
+            if self.settings_window and self.settings_window.isVisible():
+                self.settings_window.close()
             
             self.close()
     
@@ -231,5 +239,7 @@ class MainWindow(QMainWindow):
         # Asegurar que ventanas secundarias se cierren
         if self.realtime_window and self.realtime_window.isVisible():
             self.realtime_window.close()
+        if self.settings_window and self.settings_window.isVisible():
+            self.settings_window.close()
         
         event.accept()

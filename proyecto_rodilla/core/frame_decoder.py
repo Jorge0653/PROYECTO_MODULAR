@@ -1,10 +1,9 @@
 """
-Decodificador del protocolo binario ESP32-S3
+Decodificador del protocolo binario ESP32-S3.
 """
 import struct
 from typing import Optional, Dict, List
-from config import (PREAMBLE, FRAME_TYPE_EMG, FRAME_TYPE_IMU,
-                    VREF, PGA_GAIN, ADC_RESOLUTION)
+from config import settings as cfg
 
 
 def crc16_ccitt(data: bytes, initial_crc: int = 0xFFFF) -> int:
@@ -37,9 +36,9 @@ class FrameDecoder:
         self.buffer.extend(data)
         frames = []
         
-        while len(self.buffer) >= 7:  # Mínimo: preamble(2) + type(1) + crc(2) = 5 + payload mínimo
+        while len(self.buffer) >= 7:  # Mínimo: preámbulo + tipo + CRC
             # Buscar preámbulo
-            idx = self.buffer.find(PREAMBLE)
+            idx = self.buffer.find(cfg.PREAMBLE)
             if idx == -1:
                 self.buffer = self.buffer[-1:]  # Guardar último byte
                 break
@@ -53,9 +52,9 @@ class FrameDecoder:
             frame_type = self.buffer[2]
             
             # Determinar tamaño de payload según tipo
-            if frame_type == FRAME_TYPE_EMG:
+            if frame_type == cfg.FRAME_TYPE_EMG:
                 payload_size = 14  # SEQ(2) + TS(4) + A(4) + B(4)
-            elif frame_type == FRAME_TYPE_IMU:
+            elif frame_type == cfg.FRAME_TYPE_IMU:
                 payload_size = 18  # SEQ(2) + TS(4) + 6*int16(12)
             else:
                 # Tipo desconocido, descartar y buscar siguiente
@@ -87,12 +86,13 @@ class FrameDecoder:
     def _decode_payload(self, frame_type: int, payload: bytes) -> Optional[Dict]:
         """Decodifica el payload según el tipo de frame."""
         try:
-            if frame_type == FRAME_TYPE_EMG:
+            if frame_type == cfg.FRAME_TYPE_EMG:
                 seq, ts, raw_a, raw_b = struct.unpack('<HIii', payload)
                 
                 # Conversión a voltaje
-                ch0_v = (raw_a / ADC_RESOLUTION) * (VREF / PGA_GAIN)
-                ch1_v = (raw_b / ADC_RESOLUTION) * (VREF / PGA_GAIN)
+                full_scale = cfg.VREF / cfg.PGA_GAIN
+                ch0_v = (raw_a / cfg.ADC_RESOLUTION) * full_scale
+                ch1_v = (raw_b / cfg.ADC_RESOLUTION) * full_scale
                 
                 return {
                     'type': 'EMG',
@@ -102,7 +102,7 @@ class FrameDecoder:
                     'ch1': ch1_v
                 }
             
-            elif frame_type == FRAME_TYPE_IMU:
+            elif frame_type == cfg.FRAME_TYPE_IMU:
                 seq, ts, ax, ay, az, gx, gy, gz = struct.unpack('<HIhhhhhh', payload)
                 
                 # Conversión según datasheet MPU6050

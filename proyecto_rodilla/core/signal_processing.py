@@ -1,29 +1,28 @@
 """
-Procesamiento de señales: filtros, RMS, cálculo de ángulo de flexión
+Procesamiento de señales: filtros, RMS y cálculo de ángulo de flexión.
 """
 import numpy as np
 from scipy import signal
 from collections import deque
-from config import (EMG_FS, EMG_HIGHPASS_CUTOFF, EMG_LOWPASS_CUTOFF,
-                    EMG_NOTCH_FREQ, EMG_NOTCH_Q, RMS_WINDOW_SAMPLES,
-                    COMPLEMENTARY_FILTER_ALPHA, IMU_FS)
+from typing import Optional
+from config import settings as cfg
 
 
 class EMGProcessor:
     """Procesador de señales EMG: filtrado, detrend, RMS"""
     
-    def __init__(self, fs: float = EMG_FS):
-        self.fs = fs
+    def __init__(self, fs: Optional[float] = None):
+        self.fs = fs if fs is not None else cfg.EMG_FS
         
         # Diseño de filtros (solo una vez)
         # Pasa-altas (Butterworth 4° orden)
-        self.sos_hp = signal.butter(4, EMG_HIGHPASS_CUTOFF, 'hp', fs=fs, output='sos')
+        self.sos_hp = signal.butter(4, cfg.EMG_HIGHPASS_CUTOFF, 'hp', fs=self.fs, output='sos')
         
         # Pasa-bajas (Butterworth 4° orden)
-        self.sos_lp = signal.butter(4, EMG_LOWPASS_CUTOFF, 'lp', fs=fs, output='sos')
+        self.sos_lp = signal.butter(4, cfg.EMG_LOWPASS_CUTOFF, 'lp', fs=self.fs, output='sos')
         
         # Notch (IIR)
-        self.b_notch, self.a_notch = signal.iirnotch(EMG_NOTCH_FREQ, EMG_NOTCH_Q, fs)
+        self.b_notch, self.a_notch = signal.iirnotch(cfg.EMG_NOTCH_FREQ, cfg.EMG_NOTCH_Q, self.fs)
         
         # Estados de los filtros (para procesamiento continuo)
         self.zi_hp = signal.sosfilt_zi(self.sos_hp)
@@ -31,7 +30,7 @@ class EMGProcessor:
         self.zi_notch = signal.lfilter_zi(self.b_notch, self.a_notch)
         
         # Buffer para RMS
-        self.rms_buffer = deque(maxlen=RMS_WINDOW_SAMPLES)
+        self.rms_buffer = deque(maxlen=cfg.RMS_WINDOW_SAMPLES)
     
     def process_sample(self, sample: float) -> tuple:
         """
@@ -67,12 +66,13 @@ class EMGProcessor:
 class AngleCalculator:
     """
     Calcula el ángulo de flexión de rodilla usando fusión accel + gyro.
-    Filtro complementario.
+    IMU montado con X lateral, Y superior (hacia la rodilla) y Z anterior (hacia el frente).
     """
     
-    def __init__(self, alpha: float = COMPLEMENTARY_FILTER_ALPHA, fs: float = IMU_FS):
-        self.alpha = alpha
-        self.dt = 1.0 / fs
+    def __init__(self, alpha: Optional[float] = None, fs: Optional[float] = None):
+        self.alpha = alpha if alpha is not None else cfg.COMPLEMENTARY_FILTER_ALPHA
+        imu_fs = fs if fs is not None else cfg.IMU_FS
+        self.dt = 1.0 / imu_fs if imu_fs else 0.02
         
         # Estado
         self.angle = 0.0  # Ángulo actual (°)
@@ -88,11 +88,11 @@ class AngleCalculator:
     def calculate_angle_accel(self, ax: float, ay: float, az: float) -> float:
         """
         Calcula ángulo de inclinación solo con acelerómetro.
-        Asume IMU en espinilla, eje X apunta hacia adelante.
+        Asume IMU en espinilla, eje X lateral, eje Y superior y eje Z anterior.
         """
         # Ángulo en plano sagital (flexión/extensión)
         # Usar arctan2 para obtener ángulo respecto a gravedad
-        angle = np.degrees(np.arctan2(ax, np.sqrt(ay**2 + az**2)))
+        angle = np.degrees(np.arctan2(-az, ay))
         return angle
     
     def update(self, ax: float, ay: float, az: float, 
@@ -119,9 +119,9 @@ class AngleCalculator:
         # Ángulo del acelerómetro (referencia absoluta pero ruidoso)
         angle_accel = self.calculate_angle_accel(ax, ay, az)
         
-        # Integración del giroscopio (preciso a corto plazo pero con drift)
-        # Usar gy (rotación en plano sagital para flexión)
-        angle_gyro = self.angle + gy * dt
+        # Integración del giroscopio (rotación de flexión alrededor del eje lateral X)
+        gyro_rate = -gx
+        angle_gyro = self.angle + gyro_rate * dt
         
         # Filtro complementario
         self.angle = self.alpha * angle_gyro + (1 - self.alpha) * angle_accel

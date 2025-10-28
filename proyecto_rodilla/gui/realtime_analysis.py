@@ -2,7 +2,6 @@
 Módulo de análisis en tiempo real: EMG + IMU + Ángulo de flexión
 """
 import numpy as np
-from collections import deque
 from typing import Optional, Dict
 import pyqtgraph as pg
 from pyqtgraph.Qt import QtCore, QtWidgets
@@ -14,9 +13,7 @@ from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
 from PyQt6.QtGui import QFont
 
 from core import SerialReaderThread, get_available_ports, EMGProcessor, AngleCalculator
-from config import (EMG_BUFFER_SIZE, IMU_BUFFER_SIZE, UPDATE_INTERVAL_MS,
-                    WINDOW_TIME_SEC, COLOR_CH0, COLOR_CH1, COLOR_RMS_CH0,
-                    COLOR_RMS_CH1, COLOR_ANGLE, EMG_FS, CALIBRATION_POINTS)
+from config import settings as cfg
 from utils import save_json, load_json
 
 
@@ -30,7 +27,7 @@ class CalibrationDialog(QDialog):
         self.setMinimumWidth(500)
         
         # Resultados
-        self.calibration_mode = CALIBRATION_POINTS  # 1 o 2 puntos
+        self.calibration_mode = cfg.CALIBRATION_POINTS  # 1 o 2 puntos
         self.angle_raw_point1 = None
         self.angle_ref_point1 = 0.0
         self.angle_raw_point2 = None
@@ -65,7 +62,7 @@ class CalibrationDialog(QDialog):
         self.radio_1point = QRadioButton("1 Punto (solo offset - pierna estirada = 0°)")
         self.radio_2point = QRadioButton("2 Puntos (offset + escala - mayor precisión)")
         
-        if CALIBRATION_POINTS == 1:
+        if cfg.CALIBRATION_POINTS == 1:
             self.radio_1point.setChecked(True)
         else:
             self.radio_2point.setChecked(True)
@@ -254,16 +251,18 @@ class RealtimeAnalysisWindow(QMainWindow):
         self.angle_calculator = AngleCalculator()
         
         # Buffers (arrays numpy pre-alocados)
-        self.time_emg_ch0 = np.zeros(EMG_BUFFER_SIZE, dtype=np.float64)
-        self.data_emg_ch0 = np.zeros(EMG_BUFFER_SIZE, dtype=np.float64)
-        self.data_rms_ch0 = np.zeros(EMG_BUFFER_SIZE, dtype=np.float64)
+        emg_buffer = cfg.EMG_BUFFER_SIZE
+        imu_buffer = cfg.IMU_BUFFER_SIZE
+        self.time_emg_ch0 = np.zeros(emg_buffer, dtype=np.float64)
+        self.data_emg_ch0 = np.zeros(emg_buffer, dtype=np.float64)
+        self.data_rms_ch0 = np.zeros(emg_buffer, dtype=np.float64)
         
-        self.time_emg_ch1 = np.zeros(EMG_BUFFER_SIZE, dtype=np.float64)
-        self.data_emg_ch1 = np.zeros(EMG_BUFFER_SIZE, dtype=np.float64)
-        self.data_rms_ch1 = np.zeros(EMG_BUFFER_SIZE, dtype=np.float64)
+        self.time_emg_ch1 = np.zeros(emg_buffer, dtype=np.float64)
+        self.data_emg_ch1 = np.zeros(emg_buffer, dtype=np.float64)
+        self.data_rms_ch1 = np.zeros(emg_buffer, dtype=np.float64)
         
-        self.time_imu = np.zeros(IMU_BUFFER_SIZE, dtype=np.float64)
-        self.data_angle = np.zeros(IMU_BUFFER_SIZE, dtype=np.float64)
+        self.time_imu = np.zeros(imu_buffer, dtype=np.float64)
+        self.data_angle = np.zeros(imu_buffer, dtype=np.float64)
         
         # Índices circulares
         self.idx_emg_ch0 = 0
@@ -292,7 +291,7 @@ class RealtimeAnalysisWindow(QMainWindow):
         # Timer de actualización
         self.update_timer = QTimer()
         self.update_timer.timeout.connect(self._update_plots)
-        self.update_timer.start(UPDATE_INTERVAL_MS)
+        self.update_timer.start(cfg.UPDATE_INTERVAL_MS)
     
     def _create_ui(self):
         """Crea la interfaz."""
@@ -319,8 +318,8 @@ class RealtimeAnalysisWindow(QMainWindow):
         self.plot_ch0.setYRange(-0.5, 0.5, padding=0.05)
         self.plot_ch0.addLegend()
         
-        self.curve_ch0 = self.plot_ch0.plot(pen=pg.mkPen(color=COLOR_CH0, width=1.5), name='EMG CH0')
-        self.curve_rms_ch0 = self.plot_ch0.plot(pen=pg.mkPen(color=COLOR_RMS_CH0, width=2), name='RMS CH0')
+        self.curve_ch0 = self.plot_ch0.plot(pen=pg.mkPen(color=cfg.COLOR_CH0, width=1.5), name='EMG CH0')
+        self.curve_rms_ch0 = self.plot_ch0.plot(pen=pg.mkPen(color=cfg.COLOR_RMS_CH0, width=2), name='RMS CH0')
         
         main_layout.addWidget(self.plot_ch0)
         
@@ -332,8 +331,8 @@ class RealtimeAnalysisWindow(QMainWindow):
         self.plot_ch1.setYRange(-0.5, 0.5, padding=0.05)
         self.plot_ch1.addLegend()
         
-        self.curve_ch1 = self.plot_ch1.plot(pen=pg.mkPen(color=COLOR_CH1, width=1.5), name='EMG CH1')
-        self.curve_rms_ch1 = self.plot_ch1.plot(pen=pg.mkPen(color=COLOR_RMS_CH1, width=2), name='RMS CH1')
+        self.curve_ch1 = self.plot_ch1.plot(pen=pg.mkPen(color=cfg.COLOR_CH1, width=1.5), name='EMG CH1')
+        self.curve_rms_ch1 = self.plot_ch1.plot(pen=pg.mkPen(color=cfg.COLOR_RMS_CH1, width=2), name='RMS CH1')
         
         main_layout.addWidget(self.plot_ch1)
         
@@ -344,7 +343,7 @@ class RealtimeAnalysisWindow(QMainWindow):
         self.plot_angle.showGrid(x=True, y=True, alpha=0.3)
         self.plot_angle.setYRange(-10, 140, padding=0.05)
         
-        self.curve_angle = self.plot_angle.plot(pen=pg.mkPen(color=COLOR_ANGLE, width=2))
+        self.curve_angle = self.plot_angle.plot(pen=pg.mkPen(color=cfg.COLOR_ANGLE, width=2))
         
         main_layout.addWidget(self.plot_angle)
         
@@ -352,15 +351,15 @@ class RealtimeAnalysisWindow(QMainWindow):
         metrics_layout = QHBoxLayout()
         
         # RMS CH0
-        self.label_rms_ch0 = self._create_metric_label("RMS CH0: 0.000 mV", COLOR_RMS_CH0)
+        self.label_rms_ch0 = self._create_metric_label("RMS CH0: 0.000 mV", cfg.COLOR_RMS_CH0)
         metrics_layout.addWidget(self.label_rms_ch0)
         
         # RMS CH1
-        self.label_rms_ch1 = self._create_metric_label("RMS CH1: 0.000 mV", COLOR_RMS_CH1)
+        self.label_rms_ch1 = self._create_metric_label("RMS CH1: 0.000 mV", cfg.COLOR_RMS_CH1)
         metrics_layout.addWidget(self.label_rms_ch1)
         
         # Ángulo actual
-        self.label_angle = self._create_metric_label("Ángulo: 0.0°", COLOR_ANGLE)
+        self.label_angle = self._create_metric_label("Ángulo: 0.0°", cfg.COLOR_ANGLE)
         metrics_layout.addWidget(self.label_angle)
         
         main_layout.addLayout(metrics_layout)
@@ -499,14 +498,14 @@ class RealtimeAnalysisWindow(QMainWindow):
             self.time_emg_ch0[self.idx_emg_ch0] = t_sec
             self.data_emg_ch0[self.idx_emg_ch0] = filtered_ch0
             self.data_rms_ch0[self.idx_emg_ch0] = rms_ch0
-            self.idx_emg_ch0 = (self.idx_emg_ch0 + 1) % EMG_BUFFER_SIZE
+            self.idx_emg_ch0 = (self.idx_emg_ch0 + 1) % cfg.EMG_BUFFER_SIZE
             
             # Procesar Canal 1
             filtered_ch1, rms_ch1 = self.emg_ch1_processor.process_sample(frame['ch1'])
             self.time_emg_ch1[self.idx_emg_ch1] = t_sec
             self.data_emg_ch1[self.idx_emg_ch1] = filtered_ch1
             self.data_rms_ch1[self.idx_emg_ch1] = rms_ch1
-            self.idx_emg_ch1 = (self.idx_emg_ch1 + 1) % EMG_BUFFER_SIZE
+            self.idx_emg_ch1 = (self.idx_emg_ch1 + 1) % cfg.EMG_BUFFER_SIZE
             
             self.emg_count += 1
         
@@ -528,7 +527,7 @@ class RealtimeAnalysisWindow(QMainWindow):
             
             self.time_imu[self.idx_imu] = t_sec
             self.data_angle[self.idx_imu] = angle
-            self.idx_imu = (self.idx_imu + 1) % IMU_BUFFER_SIZE
+            self.idx_imu = (self.idx_imu + 1) % cfg.IMU_BUFFER_SIZE
             
             self.imu_count += 1
         
@@ -550,7 +549,7 @@ class RealtimeAnalysisWindow(QMainWindow):
         # ===== EMG CH0 =====
         if self.idx_emg_ch0 > 0:
             x_max = self.current_time_emg
-            x_min = max(0, x_max - WINDOW_TIME_SEC)
+            x_min = max(0, x_max - cfg.WINDOW_TIME_SEC)
             
             t_data = np.roll(self.time_emg_ch0, -self.idx_emg_ch0)
             y_data = np.roll(self.data_emg_ch0, -self.idx_emg_ch0)
@@ -570,7 +569,7 @@ class RealtimeAnalysisWindow(QMainWindow):
         # ===== EMG CH1 =====
         if self.idx_emg_ch1 > 0:
             x_max = self.current_time_emg
-            x_min = max(0, x_max - WINDOW_TIME_SEC)
+            x_min = max(0, x_max - cfg.WINDOW_TIME_SEC)
             
             t_data = np.roll(self.time_emg_ch1, -self.idx_emg_ch1)
             y_data = np.roll(self.data_emg_ch1, -self.idx_emg_ch1)
@@ -590,7 +589,7 @@ class RealtimeAnalysisWindow(QMainWindow):
         # ===== ÁNGULO =====
         if self.idx_imu > 0:
             x_max = self.current_time_imu
-            x_min = max(0, x_max - WINDOW_TIME_SEC)
+            x_min = max(0, x_max - cfg.WINDOW_TIME_SEC)
             
             t_data = np.roll(self.time_imu, -self.idx_imu)
             angle_data = np.roll(self.data_angle, -self.idx_imu)

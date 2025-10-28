@@ -1,0 +1,52 @@
+{
+    "SERIAL_BAUD": 921600,
+    "SERIAL_TIMEOUT": 1.0,
+    "PREAMBLE": [
+        165,
+        90
+    ],
+    "FRAME_TYPE_EMG": 1,
+    "FRAME_TYPE_IMU": 2,
+    "EMG_FS": 500,
+    "EMG_CHANNELS": 2,
+    "EMG_HIGHPASS_CUTOFF": 20.0,
+    "EMG_LOWPASS_CUTOFF": 249.0,
+    "EMG_NOTCH_FREQ": 60.0,
+    "EMG_NOTCH_Q": 30.0,
+    "RMS_WINDOW_MS": 100,
+    "IMU_FS": 50,
+    "COMPLEMENTARY_FILTER_ALPHA": 0.02,
+    "CALIBRATION_POINTS": 2,
+    "VREF": 3.275,
+    "PGA_GAIN": 1,
+    "ADC_RESOLUTION": 8388608,
+    "WINDOW_TIME_SEC": 5.0,
+    "UPDATE_FPS": 25,
+    "COLOR_CH0": [
+        31,
+        119,
+        180
+    ],
+    "COLOR_CH1": [
+        255,
+        127,
+        14
+    ],
+    "COLOR_RMS_CH0": [
+        44,
+        160,
+        44
+    ],
+    "COLOR_RMS_CH1": [
+        214,
+        39,
+        40
+    ],
+    "COLOR_ANGLE": [
+        148,
+        103,
+        189
+    ],
+    "CONFIG_FILE": "system_config.json",
+    "CALIBRATION_FILE": "imu_calibration.json"
+}

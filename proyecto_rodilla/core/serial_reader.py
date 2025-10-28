@@ -1,12 +1,12 @@
 """
-Thread de lectura serial asíncrona
+Thread de lectura serial asíncrona.
 """
 import serial
 import serial.tools.list_ports
 from PyQt6.QtCore import QThread, pyqtSignal
 from typing import Optional
 from .frame_decoder import FrameDecoder
-from config import SERIAL_BAUD, SERIAL_TIMEOUT
+from config import settings as cfg
 
 
 class SerialReaderThread(QThread):
@@ -15,10 +15,10 @@ class SerialReaderThread(QThread):
     frame_received = pyqtSignal(dict)  # Señal con frame decodificado
     connection_status = pyqtSignal(bool, str)  # (conectado, mensaje)
     
-    def __init__(self, port: str, baud: int = SERIAL_BAUD):
+    def __init__(self, port: str, baud: Optional[int] = None):
         super().__init__()
         self.port = port
-        self.baud = baud
+        self.baud = baud or cfg.SERIAL_BAUD
         self.running = False
         self.serial_conn: Optional[serial.Serial] = None
         self.decoder = FrameDecoder()
@@ -29,8 +29,11 @@ class SerialReaderThread(QThread):
         
         try:
             self.serial_conn = serial.Serial(
-                self.port, self.baud, timeout=SERIAL_TIMEOUT,
-                rtscts=False, dsrdtr=False
+                self.port,
+                self.baud,
+                timeout=cfg.SERIAL_TIMEOUT,
+                rtscts=False,
+                dsrdtr=False,
             )
             self.connection_status.emit(True, f"✓ Conectado a {self.port}")
             
