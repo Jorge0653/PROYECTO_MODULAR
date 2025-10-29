@@ -50,7 +50,7 @@ DEFAULT_SETTINGS: Dict[str, Any] = {
 	# Visualización
 	"WINDOW_TIME_SEC": 5.0,
 	"UPDATE_FPS": 25,
-	"COLOR_CH0": [31, 119, 180],
+	"COLOR_CH0": [31, 119, 180], 
 	"COLOR_CH1": [255, 127, 14],
 	"COLOR_RMS_CH0": [44, 160, 44],
 	"COLOR_RMS_CH1": [214, 39, 40],

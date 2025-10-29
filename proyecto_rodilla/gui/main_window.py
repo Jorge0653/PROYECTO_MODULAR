@@ -3,7 +3,7 @@ Ventana principal con menú del sistema
 """
 from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout,
                               QPushButton, QLabel, QMessageBox, QFrame)
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QFont
 
 
@@ -13,8 +13,8 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Sistema de Evaluación y Rehabilitación de Rodilla")
-        self.setGeometry(100, 100, 800, 600)
-        self.setMinimumSize(700, 500)
+        self.setWindowState(Qt.WindowState.WindowMaximized)
+        self.setMinimumSize(600, 900)
         
         # Referencia a ventanas secundarias
         self.realtime_window = None
@@ -32,23 +32,31 @@ class MainWindow(QMainWindow):
         main_layout.setSpacing(20)
         
         # ========== TÍTULO ==========
+        title_container = QWidget()
+        title_layout = QVBoxLayout(title_container)
+        title_layout.setContentsMargins(0, 0, 0, 0)
+        title_layout.setSpacing(4)  # menor separación entre título y subtítulo
+
         title_label = QLabel("SISTEMA DE EVALUACIÓN DE RODILLA")
-        title_font = QFont("Arial", 18, QFont.Weight.Bold)
+        title_font = QFont("Avenir", 19, QFont.Weight.Bold)
         title_label.setFont(title_font)
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        title_label.setStyleSheet("color: #2c3e50; padding: 20px;")
-        main_layout.addWidget(title_label)
+        title_label.setStyleSheet("color: #D9E4E4; padding-top: 8px; padding-bottom: 0px;")
+        title_layout.addWidget(title_label)
         
         # Subtítulo
         subtitle = QLabel("EMG + IMU + Goniometría 3D")
         subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        subtitle.setStyleSheet("color: #7f8c8d; font-size: 12pt; padding-bottom: 20px;")
-        main_layout.addWidget(subtitle)
+        subtitle.setStyleSheet("color: #6F7474; font-size: 12pt; padding-top: 0px; font-family: 'Avenir';")
+        title_layout.addWidget(subtitle)
+
+        main_layout.addWidget(title_container)
         
         # Separador
         line = QFrame()
         line.setFrameShape(QFrame.Shape.HLine)
         line.setFrameShadow(QFrame.Shadow.Sunken)
+        line.setStyleSheet("border-top: 1px solid #3A3A3C;")
         main_layout.addWidget(line)
         
         main_layout.addSpacing(20)
@@ -101,34 +109,40 @@ class MainWindow(QMainWindow):
         line2 = QFrame()
         line2.setFrameShape(QFrame.Shape.HLine)
         line2.setFrameShadow(QFrame.Shadow.Sunken)
+        line2.setStyleSheet("border-top: 1px solid #3A3A3C;")
         main_layout.addWidget(line2)
         
         # ========== BOTÓN SALIR ==========
         btn_exit = QPushButton("❌  Salir")
         btn_exit.setStyleSheet("""
             QPushButton {
-                background-color: #e74c3c;
-                color: white;
-                font-size: 14pt;
+                background-color: #9C3428;
+                color: #e4e4e4;
+                font-size: 13pt;
                 font-weight: bold;
+                font-family: "Avenir";
                 padding: 15px;
-                border-radius: 8px;
+                border-radius: 3px;
                 border: none;
             }
             QPushButton:hover {
-                background-color: #c0392b;
+                background-color: #822B22;
+                border-radius: 6px;
+                
             }
             QPushButton:pressed {
-                background-color: #a93226;
+                background-color: #71261D;
+                border-radius: 9px;
+                
             }
         """)
         btn_exit.clicked.connect(self._confirm_exit)
         main_layout.addWidget(btn_exit)
         
         # ========== FOOTER ==========
-        footer = QLabel("CUCEI - Universidad de Guadalajara | Proyecto Modular 2025")
+        footer = QLabel("CUCEI - Universidad de Guadalajara | Ingeniería Biomédica © 2025")
         footer.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        footer.setStyleSheet("color: #95a5a6; font-size: 9pt; padding-top: 10px;")
+        footer.setStyleSheet("color: #969696; font-size: 9pt; padding-top: 10px; font-family: 'Times New Roman';")
         main_layout.addWidget(footer)
     
     def _create_menu_button(self, text: str, description: str, enabled: bool = True) -> tuple[QPushButton, QWidget]:
@@ -143,39 +157,44 @@ class MainWindow(QMainWindow):
         if enabled:
             btn.setStyleSheet("""
                 QPushButton {
-                    background-color: #3498db;
-                    color: white;
+                    background-color: #32598C;
+                    color: #e4e4e4;
                     font-size: 14pt;
+                    font-family: "Avenir";
                     font-weight: bold;
                     padding: 15px;
                     text-align: left;
-                    border-radius: 8px;
+                    border-radius: 6px;
                     border: none;
                 }
                 QPushButton:hover {
-                    background-color: #2980b9;
+                    background-color: #233E62;
+                    border-radius: 12px;          
                 }
                 QPushButton:pressed {
-                    background-color: #21618c;
+                    background-color: #182B43;
+                    border-radius: 15px;  
                 }
             """)
         else:
             btn.setStyleSheet("""
                 QPushButton {
-                    background-color: #bdc3c7;
-                    color: #7f8c8d;
+                    background-color: #98A2A9;
+                    color: #777E84;
                     font-size: 14pt;
+                    font-family: "Avenir";
                     font-weight: bold;
                     padding: 15px;
                     text-align: left;
-                    border-radius: 8px;
+                    border-radius: 6px;
                     border: none;
+                    
                 }
             """)
         
-        # Descripción
+        # Descripción debajo del botón 
         desc_label = QLabel(f"    {description}")
-        desc_label.setStyleSheet("color: #7f8c8d; font-size: 10pt; padding-left: 5px;")
+        desc_label.setStyleSheet("color: #747474; font-size: 10pt; padding-left: 24px; font-family: 'Avenir';padding-top: 3px;")
         desc_label.setWordWrap(True)
         
         layout.addWidget(btn)
@@ -188,7 +207,8 @@ class MainWindow(QMainWindow):
         from .realtime_analysis import RealtimeAnalysisWindow
         
         if self.realtime_window is None or not self.realtime_window.isVisible():
-            self.realtime_window = RealtimeAnalysisWindow()
+            self.realtime_window = RealtimeAnalysisWindow(self)
+            self.realtime_window.window_reload_requested.connect(self._reload_realtime_analysis)
             self.realtime_window.show()
         else:
             self.realtime_window.raise_()
@@ -200,6 +220,8 @@ class MainWindow(QMainWindow):
 
         if self.settings_window is None or not self.settings_window.isVisible():
             self.settings_window = SettingsWindow(self)
+            self.settings_window.settings_applied.connect(self._on_settings_applied_from_main)
+            self.settings_window.finished.connect(self._on_settings_dialog_closed)
             self.settings_window.show()
         else:
             self.settings_window.raise_()
@@ -210,8 +232,7 @@ class MainWindow(QMainWindow):
         QMessageBox.information(
             self,
             "Función no disponible",
-            "Esta funcionalidad estará disponible en futuras versiones.\n\n"
-            "Por ahora, puedes usar el módulo de Análisis en Tiempo Real.",
+            "Esta funcionalidad estará disponible en futuras versiones.\n\n",
             QMessageBox.StandardButton.Ok
         )
     
@@ -220,7 +241,7 @@ class MainWindow(QMainWindow):
         reply = QMessageBox.question(
             self,
             "Confirmar salida",
-            "¿Estás seguro de que deseas salir del sistema?",
+            "¿Estás seguro de que deseas cerrar el sistema?",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No
         )
@@ -243,3 +264,19 @@ class MainWindow(QMainWindow):
             self.settings_window.close()
         
         event.accept()
+
+    def _reload_realtime_analysis(self):
+        """Recrea la ventana de análisis en tiempo real tras aplicar configuración."""
+        if self.realtime_window:
+            self.realtime_window.close()
+            self.realtime_window = None
+        QTimer.singleShot(0, self._open_realtime_analysis)
+
+    def _on_settings_applied_from_main(self) -> None:
+        """Reinicia módulos activos tras guardar configuración desde el menú principal."""
+        if self.realtime_window and self.realtime_window.isVisible():
+            self._reload_realtime_analysis()
+
+    def _on_settings_dialog_closed(self, _: int) -> None:
+        """Limpia la referencia al cerrar el diálogo de configuración."""
+        self.settings_window = None

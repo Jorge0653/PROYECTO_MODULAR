@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, Iterable
 
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import (
     QComboBox,
     QDialog,
@@ -18,43 +18,82 @@ from PyQt6.QtWidgets import (
     QTabWidget,
     QVBoxLayout,
     QWidget,
+    QColorDialog,
 )
+from PyQt6.QtGui import QColor
 
 from config import settings as cfg
 
 
-class ColorInput(QWidget):
-    """Editor sencillo para tuplas RGB."""
+class ColorPicker(QWidget):
+    """Selector de color con vista previa y diálogo del sistema."""
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(6)
-        self._spins: list[QSpinBox] = []
-        for _ in range(3):
-            spin = QSpinBox(self)
-            spin.setRange(0, 255)
-            spin.setFixedWidth(100)
-            layout.addWidget(spin)
-            self._spins.append(spin)
+        layout.setSpacing(8)
 
-    def set_value(self, value: Iterable[int]) -> None:
-        for spin, val in zip(self._spins, value):
-            spin.setValue(int(val))
+        self._color: tuple[int, int, int] = (0, 0, 0)
+
+        self._preview = QLabel()
+        self._preview.setFixedSize(58, 24)
+        self._preview.setStyleSheet("border: 1px solid #1F1F21; border-radius: 4px;")
+        self._preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(self._preview)
+
+        self._button = QPushButton("Seleccionar color")
+        self._button.setMinimumWidth(140)
+        self._button.clicked.connect(self._open_dialog)
+        layout.addWidget(self._button)
+
+        layout.addStretch(1)
+
+        self._update_preview()
+
+    def set_value(self, value: Iterable[int] | None) -> None:
+        if value is None:
+            self._color = (0, 0, 0)
+        else:
+            rgb = tuple(int(v) for v in value)
+            if len(rgb) != 3:
+                raise ValueError("El color debe tener formato RGB")
+            self._color = tuple(max(0, min(255, v)) for v in rgb)
+        self._update_preview()
 
     def get_value(self) -> tuple[int, int, int]:
-        return tuple(spin.value() for spin in self._spins)
+        return self._color
+
+    # ------------------------------------------------------------------
+    def _open_dialog(self) -> None:
+        initial = QColor(*self._color)
+        color = QColorDialog.getColor(initial, self, "Seleccionar color")
+        if color.isValid():
+            self._color = (color.red(), color.green(), color.blue())
+            self._update_preview()
+
+    def _update_preview(self) -> None:
+        r, g, b = self._color
+        brightness = (r * 299 + g * 587 + b * 114) / 1000
+        text_color = "#0E0D0D" if brightness > 150 else "#E4E4E4"
+        self._preview.setStyleSheet(
+            "border: 1px solid #1F1F21; border-radius: 4px; "
+            f"background-color: rgb({r}, {g}, {b}); color: {text_color};"
+        )
+        self._preview.setText(f"#{r:02X}{g:02X}{b:02X}")
 
 
 class SettingsWindow(QDialog):
     """Diálogo de edición de parámetros de configuración."""
+
+    settings_applied = pyqtSignal()
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self.setWindowTitle("Configuración del Sistema")
         self.resize(720, 620)
         self.setModal(True)
+        self._apply_styles()
 
         self._schema = cfg.get_settings_schema()
         self._layout = cfg.get_settings_layout()
@@ -93,6 +132,7 @@ class SettingsWindow(QDialog):
         button_bar.addStretch(1)
 
         self.btn_reset = QPushButton("Restablecer valores")
+        self.btn_reset.setProperty("category", "secondary")
         self.btn_reset.clicked.connect(self._on_reset)
         button_bar.addWidget(self.btn_reset)
 
@@ -102,6 +142,7 @@ class SettingsWindow(QDialog):
         button_bar.addWidget(self.btn_save)
 
         self.btn_close = QPushButton("Cerrar")
+        self.btn_close.setProperty("category", "secondary")
         self.btn_close.clicked.connect(self.close)
         button_bar.addWidget(self.btn_close)
 
@@ -133,7 +174,7 @@ class SettingsWindow(QDialog):
                 for option in meta.get("options", []):
                     widget.addItem(str(option), option)
             elif value_type == "color":
-                widget = ColorInput()
+                widget = ColorPicker()
             elif value_type == "bytes":
                 widget = QLineEdit(self._format_bytes(value))
                 widget.setPlaceholderText("A5 5A")
@@ -172,7 +213,7 @@ class SettingsWindow(QDialog):
             if idx >= 0:
                 widget.setCurrentIndex(idx)
             return
-        if isinstance(widget, ColorInput):
+        if isinstance(widget, ColorPicker):
             widget.set_value(value or (0, 0, 0))
             return
         if isinstance(widget, QLineEdit):
@@ -189,6 +230,7 @@ class SettingsWindow(QDialog):
             updates = self._collect_updates()
         except ValueError as exc:
             QMessageBox.warning(self, "Valor inválido", str(exc))
+            
             return
 
         if not updates:
@@ -203,11 +245,9 @@ class SettingsWindow(QDialog):
 
         self._values = cfg.get_settings()
         self._populate_from_values()
-        QMessageBox.information(
-            self,
-            "Configuración",
-            "Parámetros guardados correctamente. Reinicia los módulos abiertos para aplicar cambios.",
-        )
+
+        self.settings_applied.emit()
+        self.accept()
 
     def _on_reset(self) -> None:
         confirm = QMessageBox.question(
@@ -250,7 +290,7 @@ class SettingsWindow(QDialog):
         if isinstance(widget, QComboBox):
             data = widget.currentData()
             return data if data is not None else widget.currentText()
-        if isinstance(widget, ColorInput):
+        if isinstance(widget, ColorPicker):
             return widget.get_value()
         if isinstance(widget, QLineEdit):
             text = widget.text().strip()
@@ -299,3 +339,92 @@ class SettingsWindow(QDialog):
         if not result:
             raise ValueError("Ingresa al menos un byte en formato hexadecimal")
         return result
+
+    def _apply_styles(self) -> None:
+        self.setStyleSheet(
+            """
+            QDialog {
+                background-color: #1C1C1E;
+                color: #E4E4E4;
+                font-family: "Avenir";
+                font-size: 10.5pt;
+            }
+            QLabel {
+                color: #D9E4E4;
+                font-size: 10.5pt;
+            }
+            QLineEdit, QSpinBox, QDoubleSpinBox, QComboBox {
+                background-color: #2C2C2E;
+                border: 1px solid #3A3A3C;
+                border-radius: 5px;
+                padding: 6px 8px;
+                color: #F5F5F7;
+                selection-background-color: #32598C;
+                selection-color: #FFFFFF;
+            }
+            QLineEdit:disabled, QSpinBox:disabled, QDoubleSpinBox:disabled, QComboBox:disabled {
+                background-color: #2A2A2A;
+                color: #767676;
+                border-color: #3F3F41;
+            }
+            QTabWidget::pane {
+                border: 1px solid #323234;
+                border-radius: 6px;
+                margin-top: 8px;
+            }
+            QTabBar::tab {
+                background: #29292B;
+                color: #CCCCD0;
+                border: 1px solid #323234;
+                padding: 8px 16px;
+                margin-right: 2px;
+                border-top-left-radius: 5px;
+                border-top-right-radius: 5px;
+            }
+            QTabBar::tab:selected {
+                background: #32598C;
+                color: #FFFFFF;
+            }
+            QTabBar::tab:hover {
+                background: #233E62;
+            }
+            QPushButton {
+                background-color: #32598C;
+                color: #FFFFFF;
+                font-weight: 600;
+                padding: 10px 18px;
+                border: none;
+                border-radius: 6px;
+            }
+            QPushButton:hover {
+                background-color: #233E62;
+            }
+            QPushButton:pressed {
+                background-color: #1A2D47;
+            }
+            QPushButton[category="secondary"] {
+                background-color: #3A3A3C;
+                color: #D0D0D5;
+                font-weight: 500;
+            }
+            QPushButton[category="secondary"]:hover {
+                background-color: #4A4A4D;
+            }
+            QPushButton[category="secondary"]:pressed {
+                background-color: #2F2F31;
+            }
+            QMessageBox {
+                background-color: #1C1C1E;
+                font-family: "Avenir";
+                font-size: 9.5pt;
+            }
+            QMessageBox QLabel {
+                min-width: 240px;
+                font-size: 9.5pt;
+            }
+            QMessageBox QPushButton {
+                padding: 3px 6px;
+                font-size: 9.5pt;
+            }
+        """
+        )

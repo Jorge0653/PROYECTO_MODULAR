@@ -15,6 +15,7 @@ from PyQt6.QtGui import QFont
 from core import SerialReaderThread, get_available_ports, EMGProcessor, AngleCalculator
 from config import settings as cfg
 from utils import save_json, load_json
+from .settings_window import SettingsWindow
 
 
 class CalibrationDialog(QDialog):
@@ -42,8 +43,8 @@ class CalibrationDialog(QDialog):
         
         # Título
         title = QLabel("🎯 Calibración del Ángulo de Rodilla")
-        title.setFont(QFont("Arial", 14, QFont.Weight.Bold))
-        title.setStyleSheet("color: #2c3e50; padding: 10px;")
+        title.setFont(QFont("Avenir", 14, QFont.Weight.Bold))
+        title.setStyleSheet("color: #D9E4E4; padding: 10px;")
         layout.addWidget(title)
         
         # Instrucciones
@@ -52,7 +53,7 @@ class CalibrationDialog(QDialog):
             "Puedes elegir calibración de 1 o 2 puntos:"
         )
         instructions.setWordWrap(True)
-        instructions.setStyleSheet("padding: 10px; color: #34495e;")
+        instructions.setStyleSheet("padding: 10px; color: #e4e4e4;")
         layout.addWidget(instructions)
         
         # Selección de modo
@@ -77,7 +78,7 @@ class CalibrationDialog(QDialog):
         point1_layout = QVBoxLayout()
         
         p1_inst = QLabel("1. Extiende completamente la rodilla\n2. Haz clic en 'Capturar Punto 1'")
-        p1_inst.setStyleSheet("color: #555;")
+        p1_inst.setStyleSheet("color: #B8B8B8;")
         point1_layout.addWidget(p1_inst)
         
         p1_angle_layout = QHBoxLayout()
@@ -91,12 +92,12 @@ class CalibrationDialog(QDialog):
         point1_layout.addLayout(p1_angle_layout)
         
         self.btn_capture_p1 = QPushButton("Capturar Punto 1")
-        self.btn_capture_p1.setStyleSheet("padding: 8px; background-color: #3498db; color: white; font-weight: bold;")
+        self.btn_capture_p1.setStyleSheet("padding: 8px; background-color: #3498db; color: #E4E4E4; font-weight: bold;")
         self.btn_capture_p1.clicked.connect(self._capture_point1)
         point1_layout.addWidget(self.btn_capture_p1)
         
         self.label_p1_status = QLabel("❌ No capturado")
-        self.label_p1_status.setStyleSheet("color: #e74c3c; padding: 5px;")
+        self.label_p1_status.setStyleSheet("color: #9C3428; padding: 5px;")
         point1_layout.addWidget(self.label_p1_status)
         
         point1_group.setLayout(point1_layout)
@@ -107,7 +108,7 @@ class CalibrationDialog(QDialog):
         point2_layout = QVBoxLayout()
         
         p2_inst = QLabel("1. Flexiona la rodilla a un ángulo conocido (ej. 90°)\n2. Haz clic en 'Capturar Punto 2'")
-        p2_inst.setStyleSheet("color: #555;")
+        p2_inst.setStyleSheet("color: #B8B8B8;")
         point2_layout.addWidget(p2_inst)
         
         p2_angle_layout = QHBoxLayout()
@@ -115,19 +116,19 @@ class CalibrationDialog(QDialog):
         self.spin_point2 = QSpinBox()
         self.spin_point2.setRange(30, 150)
         self.spin_point2.setValue(90)
-        self.spin_point2.setToolTip("Ángulo real de flexión (usa goniómetro manual si es posible)")
+        self.spin_point2.setToolTip("Ángulo real de flexión (usa goniómetro si es posible)")
         p2_angle_layout.addWidget(self.spin_point2)
         p2_angle_layout.addStretch()
         point2_layout.addLayout(p2_angle_layout)
         
         self.btn_capture_p2 = QPushButton("Capturar Punto 2")
-        self.btn_capture_p2.setStyleSheet("padding: 8px; background-color: #3498db; color: white; font-weight: bold;")
+        self.btn_capture_p2.setStyleSheet("padding: 8px; background-color: #3498db; color: #E4E4E4; font-weight: bold;")
         self.btn_capture_p2.clicked.connect(self._capture_point2)
         self.btn_capture_p2.setEnabled(False)
         point2_layout.addWidget(self.btn_capture_p2)
         
         self.label_p2_status = QLabel("❌ No capturado")
-        self.label_p2_status.setStyleSheet("color: #e74c3c; padding: 5px;")
+        self.label_p2_status.setStyleSheet("color: #9C3428; padding: 5px;")
         point2_layout.addWidget(self.label_p2_status)
         
         self.point2_group.setLayout(point2_layout)
@@ -137,7 +138,7 @@ class CalibrationDialog(QDialog):
         btn_layout = QHBoxLayout()
         
         self.btn_finish = QPushButton("✓ Finalizar Calibración")
-        self.btn_finish.setStyleSheet("padding: 10px; background-color: #27ae60; color: white; font-weight: bold;")
+        self.btn_finish.setStyleSheet("padding: 10px; background-color: #1D8347; color: white; font-weight: bold;")
         self.btn_finish.clicked.connect(self._finish_calibration)
         self.btn_finish.setEnabled(False)
         btn_layout.addWidget(self.btn_finish)
@@ -167,9 +168,9 @@ class CalibrationDialog(QDialog):
         self.angle_raw_point1 = None
         self.angle_raw_point2 = None
         self.label_p1_status.setText("❌ No capturado")
-        self.label_p1_status.setStyleSheet("color: #e74c3c; padding: 5px;")
+        self.label_p1_status.setStyleSheet("color: #9C3428; padding: 5px;")
         self.label_p2_status.setText("❌ No capturado")
-        self.label_p2_status.setStyleSheet("color: #e74c3c; padding: 5px;")
+        self.label_p2_status.setStyleSheet("color: #9C3428; padding: 5px;")
         self.btn_capture_p2.setEnabled(False)
         self.btn_finish.setEnabled(False)
     
@@ -235,15 +236,18 @@ class CalibrationDialog(QDialog):
 
 class RealtimeAnalysisWindow(QMainWindow):
     """Ventana de análisis en tiempo real."""
+    window_reload_requested = QtCore.pyqtSignal()
     
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None):
+        super().__init__(parent)
         self.setWindowTitle("Análisis en Tiempo Real - EMG + IMU")
-        self.setGeometry(100, 100, 1600, 1000)
+        self.setWindowState(QtCore.Qt.WindowState.WindowMaximized)
+        self.setMinimumSize(1200, 800)
         
         # Estados
         self.serial_thread: Optional[SerialReaderThread] = None
         self.is_connected = False
+        self.settings_window: Optional[SettingsWindow] = None
         
         # Procesadores
         self.emg_ch0_processor = EMGProcessor()
@@ -303,16 +307,16 @@ class RealtimeAnalysisWindow(QMainWindow):
         self._create_toolbar(main_layout)
         
         # ========== CONFIGURACIÓN DE PYQTGRAPH ==========
-        pg.setConfigOption('background', 'w')
-        pg.setConfigOption('foreground', 'k')
-        pg.setConfigOption('antialias', False)
-        pg.setConfigOption('useOpenGL', False)
+        pg.setConfigOption('background', "#1E1F20") # Color de fondo oscuro
+        pg.setConfigOption('foreground', '#E4E4E4') # Color de líneas y texto claro
+        pg.setConfigOption('antialias', False) # Desactivar antialiasing para mejor rendimiento
+        pg.setConfigOption('useOpenGL', False) # Desactivar OpenGL para compatibilidad 
         
         # ========== GRÁFICAS ==========
         
         # Canal EMG 0
-        self.plot_ch0 = pg.PlotWidget(title='Canal EMG 0 (AIN0)')
-        self.plot_ch0.setLabel('left', 'Voltaje', units='V')
+        self.plot_ch0 = pg.PlotWidget(title='Canal EMG 0 (Cuadríceps)')
+        self.plot_ch0.setLabel('left', 'Voltaje', units='V') 
         self.plot_ch0.setLabel('bottom', 'Tiempo', units='s')
         self.plot_ch0.showGrid(x=True, y=True, alpha=0.3)
         self.plot_ch0.setYRange(-0.5, 0.5, padding=0.05)
@@ -324,7 +328,7 @@ class RealtimeAnalysisWindow(QMainWindow):
         main_layout.addWidget(self.plot_ch0)
         
         # Canal EMG 1
-        self.plot_ch1 = pg.PlotWidget(title='Canal EMG 1 (AIN1)')
+        self.plot_ch1 = pg.PlotWidget(title='Canal EMG 1 (Isquiotibiales)')
         self.plot_ch1.setLabel('left', 'Voltaje', units='V')
         self.plot_ch1.setLabel('bottom', 'Tiempo', units='s')
         self.plot_ch1.showGrid(x=True, y=True, alpha=0.3)
@@ -341,7 +345,7 @@ class RealtimeAnalysisWindow(QMainWindow):
         self.plot_angle.setLabel('left', 'Ángulo', units='°')
         self.plot_angle.setLabel('bottom', 'Tiempo', units='s')
         self.plot_angle.showGrid(x=True, y=True, alpha=0.3)
-        self.plot_angle.setYRange(-10, 140, padding=0.05)
+        self.plot_angle.setYRange(-10, 180, padding=0.05)
         
         self.curve_angle = self.plot_angle.plot(pen=pg.mkPen(color=cfg.COLOR_ANGLE, width=2))
         
@@ -373,51 +377,133 @@ class RealtimeAnalysisWindow(QMainWindow):
     def _create_toolbar(self, parent_layout):
         """Crea el toolbar de control."""
         toolbar_widget = QWidget()
+        toolbar_widget.setObjectName("controlToolbar")
         toolbar_layout = QHBoxLayout(toolbar_widget)
-        toolbar_layout.setContentsMargins(10, 10, 10, 10)
-        
-        # Puerto serial
-        toolbar_layout.addWidget(QLabel("Puerto:"))
+        toolbar_layout.setContentsMargins(12, 10, 12, 10)
+        toolbar_layout.setSpacing(12)
+
+        label_port = QLabel("Puerto:")
+        toolbar_layout.addWidget(label_port)
+
         self.port_combo = QComboBox()
-        self.port_combo.setMinimumWidth(200)
+        self.port_combo.setMinimumWidth(220)
         self._refresh_ports()
         toolbar_layout.addWidget(self.port_combo)
-        
-        # Botón actualizar puertos
-        btn_refresh = QPushButton("🔄")
+
+        btn_refresh = QPushButton("⟳")
+        btn_refresh.setProperty("category", "minimal")
+        btn_refresh.setFixedWidth(40)
         btn_refresh.setToolTip("Actualizar lista de puertos")
         btn_refresh.clicked.connect(self._refresh_ports)
         toolbar_layout.addWidget(btn_refresh)
-        
-        # Botón conectar/desconectar
+
         self.btn_connect = QPushButton("Conectar")
-        self.btn_connect.setStyleSheet("font-weight: bold; padding: 8px;")
+        self.btn_connect.setProperty("category", "primary")
+        self.btn_connect.setProperty("state", "disconnected")
+        self.btn_connect.setToolTip("Iniciar conexión serial")
         self.btn_connect.clicked.connect(self._toggle_connection)
         toolbar_layout.addWidget(self.btn_connect)
-        
-        toolbar_layout.addSpacing(20)
-        
-        # Botón calibrar
+
+        toolbar_layout.addSpacing(12)
+
         self.btn_calibrate = QPushButton("🎯 Calibrar IMU")
+        self.btn_calibrate.setProperty("category", "primary")
         self.btn_calibrate.setEnabled(False)
-        self.btn_calibrate.setStyleSheet("padding: 8px;")
         self.btn_calibrate.clicked.connect(self._open_calibration)
         toolbar_layout.addWidget(self.btn_calibrate)
-        
-        # Botón limpiar
-        btn_clear = QPushButton("Limpiar Gráficas")
-        btn_clear.setStyleSheet("padding: 8px;")
+
+        btn_clear = QPushButton("Limpiar gráficas")
+        btn_clear.setProperty("category", "secondary")
+        btn_clear.setToolTip("Restablecer buffers y gráficas")
         btn_clear.clicked.connect(self._clear_buffers)
         toolbar_layout.addWidget(btn_clear)
-        
-        toolbar_layout.addStretch()
-        
+
+        toolbar_layout.addStretch(1)
+
+        self.btn_settings = QPushButton("⚙️ Configuración")
+        self.btn_settings.setProperty("category", "secondary")
+        self.btn_settings.setToolTip("Abrir configuración del sistema")
+        self.btn_settings.clicked.connect(self._open_settings)
+        toolbar_layout.addWidget(self.btn_settings)
+
         parent_layout.addWidget(toolbar_widget)
-        
-        # Separador
+
+        toolbar_widget.setStyleSheet(
+            """
+            QWidget#controlToolbar {
+                background-color: #1F1F21;
+                border: 1px solid #2D2D2F;
+                border-radius: 12px;
+            }
+            QWidget#controlToolbar QLabel {
+                color: #D9E4E4;
+                font-family: "Avenir";
+                font-size: 10.5pt;
+            }
+            QWidget#controlToolbar QComboBox {
+                background-color: #2C2C2E;
+                border: 1px solid #3A3A3C;
+                border-radius: 6px;
+                padding: 4px 9px;
+                color: #F5F5F7;
+                min-height: 30px;
+            }
+            QWidget#controlToolbar QComboBox:disabled {
+                background-color: #272729;
+                color: #7B7B80;
+                border-color: #3C3C3F;
+            }
+            QWidget#controlToolbar QPushButton {
+                background-color: #32598C;
+                color: #FFFFFF;
+                font-family: "Avenir";
+                font-weight: 600;
+                padding: 8px 16px;
+                border: none;
+                border-radius: 8px;
+            }
+            QWidget#controlToolbar QPushButton:hover {
+                background-color: #233E62;
+            }
+            QWidget#controlToolbar QPushButton:pressed {
+                background-color: #192B45;
+            }
+            QWidget#controlToolbar QPushButton[category="secondary"] {
+                background-color: #3A3A3C;
+                color: #D0D0D5;
+                font-weight: 500;
+            }
+            QWidget#controlToolbar QPushButton[category="secondary"]:hover {
+                background-color: #4A4A4D;
+            }
+            QWidget#controlToolbar QPushButton[category="secondary"]:pressed {
+                background-color: #2F2F31;
+            }
+            QWidget#controlToolbar QPushButton[category="minimal"] {
+                background-color: #2C2C2E;
+                color: #D9E4E4;
+                font-size: 13pt;
+                padding: 6px 0;
+            }
+            QWidget#controlToolbar QPushButton[category="minimal"]:hover {
+                background-color: #3A3A3C;
+            }
+            QWidget#controlToolbar QPushButton[state="connected"] {
+                background-color: #9C3428;
+            }
+            QWidget#controlToolbar QPushButton[state="connected"]:hover {
+                background-color: #822B22;
+            }
+            QWidget#controlToolbar QPushButton[state="connected"]:pressed {
+                background-color: #71261D;
+            }
+        """
+        )
+
         line = QFrame()
         line.setFrameShape(QFrame.Shape.HLine)
         line.setFrameShadow(QFrame.Shadow.Sunken)
+        line.setStyleSheet("border-top: 1px solid #2F2F31;")
         parent_layout.addWidget(line)
     
     def _create_metric_label(self, text: str, color: tuple) -> QLabel:
@@ -474,13 +560,17 @@ class RealtimeAnalysisWindow(QMainWindow):
         if connected:
             self.is_connected = True
             self.btn_connect.setText("Desconectar")
-            self.btn_connect.setStyleSheet("font-weight: bold; padding: 8px; background-color: #e74c3c; color: white;")
+            self.btn_connect.setProperty("state", "connected")
+            self.btn_connect.setToolTip("Finalizar conexión serial")
+            self._repolish(self.btn_connect)
             self.port_combo.setEnabled(False)
             self.btn_calibrate.setEnabled(True)
         else:
             self.is_connected = False
             self.btn_connect.setText("Conectar")
-            self.btn_connect.setStyleSheet("font-weight: bold; padding: 8px;")
+            self.btn_connect.setProperty("state", "disconnected")
+            self.btn_connect.setToolTip("Iniciar conexión serial")
+            self._repolish(self.btn_connect)
             self.port_combo.setEnabled(True)
             self.btn_calibrate.setEnabled(False)
     
@@ -667,11 +757,43 @@ class RealtimeAnalysisWindow(QMainWindow):
                 f"IMU calibrado correctamente ({calib_data['mode']} punto{'s' if calib_data['mode'] == 2 else ''}).\n"
                 "Los ángulos ahora reflejan la flexión real de la rodilla."
             )
+
+    def _open_settings(self):
+        """Abre el panel de configuración asociado a esta ventana."""
+        if self.settings_window is None or not self.settings_window.isVisible():
+            self.settings_window = SettingsWindow(self)
+            self.settings_window.settings_applied.connect(self._handle_settings_applied)
+            self.settings_window.finished.connect(self._on_settings_dialog_closed)
+            self.settings_window.show()
+        else:
+            self.settings_window.raise_()
+            self.settings_window.activateWindow()
+
+    def _handle_settings_applied(self) -> None:
+        """Solicita reiniciar la ventana tras guardar configuración."""
+        self.window_reload_requested.emit()
+        self.close()
+
+    def _on_settings_dialog_closed(self, _: int) -> None:
+        """Limpia la referencia del diálogo al cerrarse."""
+        self.settings_window = None
+
+    @staticmethod
+    def _repolish(widget: QtWidgets.QWidget) -> None:
+        """Fuerza a Qt a recalcular estilos después de cambiar propiedades."""
+        style = widget.style()
+        style.unpolish(widget)
+        style.polish(widget)
+        widget.update()
     
     def closeEvent(self, event):
         """Maneja el cierre de la ventana."""
         if self.serial_thread and self.serial_thread.isRunning():
             self.serial_thread.stop()
             self.serial_thread.wait()
-        
+        if self.settings_window and self.settings_window.isVisible():
+            self.settings_window.close()
+        self.settings_window = None
+        if self.update_timer.isActive():
+            self.update_timer.stop()
         event.accept()
