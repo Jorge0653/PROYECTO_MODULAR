@@ -2,7 +2,18 @@
 Configuración centralizada y editable del sistema de evaluación de rodilla.
 
 Las variables expuestas a nivel de módulo conservan compatibilidad con el código
-existente, pero internamente se administran mediante un diccionario mutable.
+		[
+			"IMU_FS",
+			"COMPLEMENTARY_FILTER_ALPHA",
+			"CALIBRATION_POINTS",
+			"AUTO_CALIB_CAMERA_INDEX",
+			"AUTO_CALIB_FPS",
+			"AUTO_CALIB_REFERENCE_EXT",
+			"AUTO_CALIB_REFERENCE_FLEX",
+			"AUTO_CALIB_TOLERANCE_DEG",
+			"AUTO_CALIB_STABILITY_FRAMES",
+			"AUTO_CALIB_VISIBILITY_THRESHOLD",
+		],
 Utiliza las funciones ``get_settings`` y ``update_settings`` para interactuar con
 los valores en tiempo de ejecución y persistirlos en ``system_config.json``.
 """
@@ -29,10 +40,10 @@ DEFAULT_SETTINGS: Dict[str, Any] = {
 	"FRAME_TYPE_IMU": 0x02,
 
 	# Parámetros EMG
-	"EMG_FS": 500,
+	"EMG_FS": 1635.78,
 	"EMG_CHANNELS": 2,
 	"EMG_HIGHPASS_CUTOFF": 20.0,
-	"EMG_LOWPASS_CUTOFF": 249.0,
+	"EMG_LOWPASS_CUTOFF": 500.0,
 	"EMG_NOTCH_FREQ": 60.0,
 	"EMG_NOTCH_Q": 30.0,
 	"RMS_WINDOW_MS": 100,
@@ -41,6 +52,13 @@ DEFAULT_SETTINGS: Dict[str, Any] = {
 	"IMU_FS": 50,
 	"COMPLEMENTARY_FILTER_ALPHA": 0.02,
 	"CALIBRATION_POINTS": 2,
+	"AUTO_CALIB_CAMERA_INDEX": 3,
+	"AUTO_CALIB_FPS": 20,
+	"AUTO_CALIB_REFERENCE_EXT": 0.0,
+	"AUTO_CALIB_REFERENCE_FLEX": 90.0,
+	"AUTO_CALIB_TOLERANCE_DEG": 2.0,
+	"AUTO_CALIB_STABILITY_FRAMES": 12,
+	"AUTO_CALIB_VISIBILITY_THRESHOLD": 0.75,
 
 	# ADC ADS1256
 	"VREF": 3.275,
@@ -115,7 +133,7 @@ SETTINGS_SCHEMA: Dict[str, Dict[str, Any]] = {
 	"EMG_FS": {
 		"section": "EMG",
 		"label": "Frecuencia de muestreo (Hz)",
-		"type": "int",
+		"type": "float",
 		"min": 100,
 		"max": 4000,
 		"step": 10,
@@ -127,12 +145,13 @@ SETTINGS_SCHEMA: Dict[str, Dict[str, Any]] = {
 		"type": "int",
 		"min": 1,
 		"max": 8,
+		"editable": False,
 	},
 	"EMG_HIGHPASS_CUTOFF": {
 		"section": "EMG",
 		"label": "High-pass cutoff (Hz)",
 		"type": "float",
-		"min": 1.0,
+		"min": 0.05,
 		"max": 200.0,
 		"step": 0.5,
 	},
@@ -140,8 +159,8 @@ SETTINGS_SCHEMA: Dict[str, Dict[str, Any]] = {
 		"section": "EMG",
 		"label": "Low-pass cutoff (Hz)",
 		"type": "float",
-		"min": 50.0,
-		"max": 249.9,
+		"min": 40.0,
+		"max": 600.0,
 		"step": 1.0,
 	},
 	"EMG_NOTCH_FREQ": {
@@ -197,6 +216,66 @@ SETTINGS_SCHEMA: Dict[str, Dict[str, Any]] = {
 		"type": "choice",
 		"options": [1, 2],
 	},
+	"AUTO_CALIB_CAMERA_INDEX": {
+		"section": "IMU",
+		"label": "Cámara semiautomática (índice)",
+		"type": "int",
+		"min": 0,
+		"max": 10,
+		"description": "Índice de cámara utilizado por MediaPipe durante la calibración semiautomática.",
+	},
+	"AUTO_CALIB_FPS": {
+		"section": "IMU",
+		"label": "FPS captura semiautomática",
+		"type": "int",
+		"min": 5,
+		"max": 60,
+		"description": "Velocidad de captura (cuadros por segundo) para procesamiento de visión.",
+	},
+	"AUTO_CALIB_REFERENCE_EXT": {
+		"section": "IMU",
+		"label": "Objetivo extensión (°)",
+		"type": "float",
+		"min": -20.0,
+		"max": 30.0,
+		"step": 0.5,
+		"description": "Ángulo objetivo detectado por visión para la pierna extendida.",
+	},
+	"AUTO_CALIB_REFERENCE_FLEX": {
+		"section": "IMU",
+		"label": "Objetivo flexión (°)",
+		"type": "float",
+		"min": 40.0,
+		"max": 150.0,
+		"step": 0.5,
+		"description": "Ángulo objetivo detectado por visión para la rodilla flexionada.",
+	},
+	"AUTO_CALIB_TOLERANCE_DEG": {
+		"section": "IMU",
+		"label": "Tolerancia detección (°)",
+		"type": "float",
+		"min": 1.0,
+		"max": 20.0,
+		"step": 0.5,
+		"description": "Margen aceptado entre el ángulo objetivo y el estimado por visión.",
+	},
+	"AUTO_CALIB_STABILITY_FRAMES": {
+		"section": "IMU",
+		"label": "Fotogramas de estabilidad",
+		"type": "int",
+		"min": 3,
+		"max": 120,
+		"description": "Frames consecutivos requeridos para aceptar un punto objetivo.",
+	},
+	"AUTO_CALIB_VISIBILITY_THRESHOLD": {
+		"section": "IMU",
+		"label": "Umbral visibilidad pose",
+		"type": "float",
+		"min": 0.0,
+		"max": 1.0,
+		"step": 0.05,
+		"description": "Confianza mínima de MediaPipe para considerar válida la pose detectada.",
+	},
 	"VREF": {
 		"section": "ADC",
 		"label": "Voltaje de referencia (V)",
@@ -211,6 +290,7 @@ SETTINGS_SCHEMA: Dict[str, Dict[str, Any]] = {
 		"type": "int",
 		"min": 1,
 		"max": 64,
+		
 	},
 	"ADC_RESOLUTION": {
 		"section": "ADC",
@@ -307,7 +387,7 @@ SETTINGS_LAYOUT: List[Tuple[str, List[str]]] = [
 			"RMS_WINDOW_SAMPLES",
 		],
 	),
-	("IMU", ["IMU_FS", "COMPLEMENTARY_FILTER_ALPHA", "CALIBRATION_POINTS"]),
+	("IMU", ["IMU_FS", "COMPLEMENTARY_FILTER_ALPHA", "CALIBRATION_POINTS", "AUTO_CALIB_CAMERA_INDEX", "AUTO_CALIB_FPS", "AUTO_CALIB_REFERENCE_EXT", "AUTO_CALIB_REFERENCE_FLEX", "AUTO_CALIB_TOLERANCE_DEG", "AUTO_CALIB_STABILITY_FRAMES", "AUTO_CALIB_VISIBILITY_THRESHOLD"]),
 	("ADC", ["VREF", "PGA_GAIN", "ADC_RESOLUTION"]),
 	(
 		"Visualización",
@@ -512,4 +592,4 @@ __all__ = list(DEFAULT_SETTINGS.keys()) + list(DERIVED_KEYS.keys()) + [
 	"get_settings_layout",
 	"update_settings",
 	"reset_to_defaults",
-]
+] 

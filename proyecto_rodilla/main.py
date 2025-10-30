@@ -3,8 +3,8 @@ Sistema de Evaluación y Rehabilitación de Rodilla
 Punto de entrada principal
 
 Autores: 
+    Daniela Carolina Ruiz García
     Jorge Eduardo Magaña Torres
-    Daniela Carolina Ruiz García 
     Joshua Uriel de la Rosa Barragán
          
 Institución: CUCEI - Universidad de Guadalajara

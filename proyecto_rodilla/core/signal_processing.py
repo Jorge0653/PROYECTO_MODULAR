@@ -12,7 +12,7 @@ class EMGProcessor:
     """Procesador de señales EMG: filtrado, detrend, RMS"""
     
     def __init__(self, fs: Optional[float] = None):
-        self.fs = fs if fs is not None else cfg.EMG_FS
+        self.fs = fs if fs is not None else cfg.EMG_FS # Frecuencia de muestreo EMG 
         
         # Diseño de filtros (solo una vez)
         # Pasa-altas (Butterworth 4° orden)
@@ -77,6 +77,8 @@ class AngleCalculator:
         # Estado
         self.angle = 0.0  # Ángulo actual (°)
         self.last_time = None
+        self._uncalibrated_offset = 90.0
+        self.last_uncalibrated_angle = self._uncalibrated_offset
         
         # Calibración
         self.calibrated = False
@@ -125,46 +127,45 @@ class AngleCalculator:
         
         # Filtro complementario
         self.angle = self.alpha * angle_gyro + (1 - self.alpha) * angle_accel
+
+        raw_uncalibrated = self.angle + self._uncalibrated_offset
+        self.last_uncalibrated_angle = raw_uncalibrated
         
         # Aplicar calibración
         if self.calibrated:
             calibrated_angle = (self.angle - self.offset) * self.scale
         else:
-            calibrated_angle = self.angle
+            calibrated_angle = raw_uncalibrated
         
         return calibrated_angle
     
     def calibrate_one_point(self, angle_ref: float = 0.0):
-        """
-        Calibración de 1 punto (solo offset).
-        
-        Args:
-            angle_ref: Ángulo de referencia real (°), típicamente 0° = pierna estirada
-        """
-        self.offset = self.angle - angle_ref
+        """Calibración de 1 punto (solo offset)."""
+        raw_angle = self.angle - self._uncalibrated_offset
+        self.offset = raw_angle - angle_ref
         self.scale = 1.0
         self.calibrated = True
-    
+        self.angle = raw_angle
+        self.last_uncalibrated_angle = raw_angle + self._uncalibrated_offset
+
     def calibrate_two_points(self, angle_raw1: float, angle_ref1: float,
-                            angle_raw2: float, angle_ref2: float):
-        """
-        Calibración de 2 puntos (offset + escala).
-        
-        Args:
-            angle_raw1: Ángulo crudo en punto 1
-            angle_ref1: Ángulo de referencia real en punto 1 (°)
-            angle_raw2: Ángulo crudo en punto 2
-            angle_ref2: Ángulo de referencia real en punto 2 (°)
-        """
-        # Mapeo lineal: angle_cal = (angle_raw - offset) * scale
-        # angle_ref1 = (angle_raw1 - offset) * scale
-        # angle_ref2 = (angle_raw2 - offset) * scale
-        
-        self.scale = (angle_ref2 - angle_ref1) / (angle_raw2 - angle_raw1)
-        self.offset = angle_raw1 - (angle_ref1 / self.scale)
+                             angle_raw2: float, angle_ref2: float):
+        """Calibración de 2 puntos (offset + escala)."""
+        raw1 = angle_raw1 - self._uncalibrated_offset
+        raw2 = angle_raw2 - self._uncalibrated_offset
+
+        denominator = raw2 - raw1
+        if abs(denominator) < 1e-6:
+            # Evitar división por cero; mantener calibración previa
+            return
+
+        self.scale = (angle_ref2 - angle_ref1) / denominator
+        self.offset = raw1 - (angle_ref1 / self.scale)
         self.angle_ref1 = angle_ref1
         self.angle_ref2 = angle_ref2
         self.calibrated = True
+        self.angle = raw2
+        self.last_uncalibrated_angle = raw2 + self._uncalibrated_offset
     
     def reset(self):
         """Reinicia el calculador"""
@@ -173,3 +174,4 @@ class AngleCalculator:
         self.calibrated = False
         self.offset = 0.0
         self.scale = 1.0
+        self.last_uncalibrated_angle = self._uncalibrated_offset

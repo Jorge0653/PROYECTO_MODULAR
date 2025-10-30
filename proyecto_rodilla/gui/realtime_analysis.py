@@ -1,237 +1,31 @@
 """
 Módulo de análisis en tiempo real: EMG + IMU + Ángulo de flexión
 """
+import sys
 import numpy as np
 from typing import Optional, Dict
 import pyqtgraph as pg
 from pyqtgraph.Qt import QtCore, QtWidgets
 from PyQt6.QtCore import QTimer, QTime
-from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-                              QPushButton, QLabel, QComboBox, QMessageBox,
-                              QGroupBox, QFrame, QDialog, QSpinBox, QRadioButton,
-                              QButtonGroup)
+from PyQt6.QtWidgets import (
+    QMainWindow,
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QPushButton,
+    QLabel,
+    QComboBox,
+    QMessageBox,
+    QFrame,
+    QDialog,
+)
 from PyQt6.QtGui import QFont
 
 from core import SerialReaderThread, get_available_ports, EMGProcessor, AngleCalculator
 from config import settings as cfg
 from utils import save_json, load_json
 from .settings_window import SettingsWindow
-
-
-class CalibrationDialog(QDialog):
-    """Diálogo para calibración del IMU."""
-    
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setWindowTitle("Calibración IMU")
-        self.setModal(True)
-        self.setMinimumWidth(500)
-        
-        # Resultados
-        self.calibration_mode = cfg.CALIBRATION_POINTS  # 1 o 2 puntos
-        self.angle_raw_point1 = None
-        self.angle_ref_point1 = 0.0
-        self.angle_raw_point2 = None
-        self.angle_ref_point2 = 90.0
-        self.calibration_done = False
-        
-        self._create_ui()
-    
-    def _create_ui(self):
-        """Crea la interfaz del diálogo."""
-        layout = QVBoxLayout(self)
-        
-        # Título
-        title = QLabel("🎯 Calibración del Ángulo de Rodilla")
-        title.setFont(QFont("Avenir", 14, QFont.Weight.Bold))
-        title.setStyleSheet("color: #D9E4E4; padding: 10px;")
-        layout.addWidget(title)
-        
-        # Instrucciones
-        instructions = QLabel(
-            "La calibración permite mapear las lecturas del IMU a ángulos reales de flexión.\n"
-            "Puedes elegir calibración de 1 o 2 puntos:"
-        )
-        instructions.setWordWrap(True)
-        instructions.setStyleSheet("padding: 10px; color: #e4e4e4;")
-        layout.addWidget(instructions)
-        
-        # Selección de modo
-        mode_group = QGroupBox("Modo de Calibración")
-        mode_layout = QVBoxLayout()
-        
-        self.radio_1point = QRadioButton("1 Punto (solo offset - pierna estirada = 0°)")
-        self.radio_2point = QRadioButton("2 Puntos (offset + escala - mayor precisión)")
-        
-        if cfg.CALIBRATION_POINTS == 1:
-            self.radio_1point.setChecked(True)
-        else:
-            self.radio_2point.setChecked(True)
-        
-        mode_layout.addWidget(self.radio_1point)
-        mode_layout.addWidget(self.radio_2point)
-        mode_group.setLayout(mode_layout)
-        layout.addWidget(mode_group)
-        
-        # Configuración Punto 1
-        point1_group = QGroupBox("📍 Punto 1: Pierna Estirada")
-        point1_layout = QVBoxLayout()
-        
-        p1_inst = QLabel("1. Extiende completamente la rodilla\n2. Haz clic en 'Capturar Punto 1'")
-        p1_inst.setStyleSheet("color: #B8B8B8;")
-        point1_layout.addWidget(p1_inst)
-        
-        p1_angle_layout = QHBoxLayout()
-        p1_angle_layout.addWidget(QLabel("Ángulo de referencia (°):"))
-        self.spin_point1 = QSpinBox()
-        self.spin_point1.setRange(-30, 30)
-        self.spin_point1.setValue(0)
-        self.spin_point1.setToolTip("Típicamente 0° = pierna completamente estirada")
-        p1_angle_layout.addWidget(self.spin_point1)
-        p1_angle_layout.addStretch()
-        point1_layout.addLayout(p1_angle_layout)
-        
-        self.btn_capture_p1 = QPushButton("Capturar Punto 1")
-        self.btn_capture_p1.setStyleSheet("padding: 8px; background-color: #3498db; color: #E4E4E4; font-weight: bold;")
-        self.btn_capture_p1.clicked.connect(self._capture_point1)
-        point1_layout.addWidget(self.btn_capture_p1)
-        
-        self.label_p1_status = QLabel("❌ No capturado")
-        self.label_p1_status.setStyleSheet("color: #9C3428; padding: 5px;")
-        point1_layout.addWidget(self.label_p1_status)
-        
-        point1_group.setLayout(point1_layout)
-        layout.addWidget(point1_group)
-        
-        # Configuración Punto 2 (solo si es 2 puntos)
-        self.point2_group = QGroupBox("📍 Punto 2: Rodilla Flexionada")
-        point2_layout = QVBoxLayout()
-        
-        p2_inst = QLabel("1. Flexiona la rodilla a un ángulo conocido (ej. 90°)\n2. Haz clic en 'Capturar Punto 2'")
-        p2_inst.setStyleSheet("color: #B8B8B8;")
-        point2_layout.addWidget(p2_inst)
-        
-        p2_angle_layout = QHBoxLayout()
-        p2_angle_layout.addWidget(QLabel("Ángulo de referencia (°):"))
-        self.spin_point2 = QSpinBox()
-        self.spin_point2.setRange(30, 150)
-        self.spin_point2.setValue(90)
-        self.spin_point2.setToolTip("Ángulo real de flexión (usa goniómetro si es posible)")
-        p2_angle_layout.addWidget(self.spin_point2)
-        p2_angle_layout.addStretch()
-        point2_layout.addLayout(p2_angle_layout)
-        
-        self.btn_capture_p2 = QPushButton("Capturar Punto 2")
-        self.btn_capture_p2.setStyleSheet("padding: 8px; background-color: #3498db; color: #E4E4E4; font-weight: bold;")
-        self.btn_capture_p2.clicked.connect(self._capture_point2)
-        self.btn_capture_p2.setEnabled(False)
-        point2_layout.addWidget(self.btn_capture_p2)
-        
-        self.label_p2_status = QLabel("❌ No capturado")
-        self.label_p2_status.setStyleSheet("color: #9C3428; padding: 5px;")
-        point2_layout.addWidget(self.label_p2_status)
-        
-        self.point2_group.setLayout(point2_layout)
-        layout.addWidget(self.point2_group)
-        
-        # Botones
-        btn_layout = QHBoxLayout()
-        
-        self.btn_finish = QPushButton("✓ Finalizar Calibración")
-        self.btn_finish.setStyleSheet("padding: 10px; background-color: #1D8347; color: white; font-weight: bold;")
-        self.btn_finish.clicked.connect(self._finish_calibration)
-        self.btn_finish.setEnabled(False)
-        btn_layout.addWidget(self.btn_finish)
-        
-        btn_cancel = QPushButton("Cancelar")
-        btn_cancel.setStyleSheet("padding: 10px;")
-        btn_cancel.clicked.connect(self.reject)
-        btn_layout.addWidget(btn_cancel)
-        
-        layout.addLayout(btn_layout)
-        
-        # Conectar cambio de modo
-        self.radio_1point.toggled.connect(self._on_mode_changed)
-        self.radio_2point.toggled.connect(self._on_mode_changed)
-        self._on_mode_changed()  # Aplicar estado inicial
-    
-    def _on_mode_changed(self):
-        """Actualiza UI según el modo seleccionado."""
-        if self.radio_1point.isChecked():
-            self.calibration_mode = 1
-            self.point2_group.setEnabled(False)
-        else:
-            self.calibration_mode = 2
-            self.point2_group.setEnabled(True)
-        
-        # Resetear estados
-        self.angle_raw_point1 = None
-        self.angle_raw_point2 = None
-        self.label_p1_status.setText("❌ No capturado")
-        self.label_p1_status.setStyleSheet("color: #9C3428; padding: 5px;")
-        self.label_p2_status.setText("❌ No capturado")
-        self.label_p2_status.setStyleSheet("color: #9C3428; padding: 5px;")
-        self.btn_capture_p2.setEnabled(False)
-        self.btn_finish.setEnabled(False)
-    
-    def set_current_angle(self, angle: float):
-        """Actualiza el ángulo crudo actual (llamado desde la ventana principal)."""
-        self.current_raw_angle = angle
-    
-    def _capture_point1(self):
-        """Captura el punto 1."""
-        if not hasattr(self, 'current_raw_angle'):
-            QMessageBox.warning(self, "Error", "No hay datos del IMU. Asegúrate de que esté conectado.")
-            return
-        
-        self.angle_raw_point1 = self.current_raw_angle
-        self.angle_ref_point1 = self.spin_point1.value()
-        
-        self.label_p1_status.setText(f"✓ Capturado: {self.angle_raw_point1:.2f}° crudo → {self.angle_ref_point1}° real")
-        self.label_p1_status.setStyleSheet("color: #27ae60; padding: 5px;")
-        
-        if self.calibration_mode == 1:
-            self.btn_finish.setEnabled(True)
-        else:
-            self.btn_capture_p2.setEnabled(True)
-    
-    def _capture_point2(self):
-        """Captura el punto 2."""
-        if not hasattr(self, 'current_raw_angle'):
-            QMessageBox.warning(self, "Error", "No hay datos del IMU.")
-            return
-        
-        self.angle_raw_point2 = self.current_raw_angle
-        self.angle_ref_point2 = self.spin_point2.value()
-        
-        self.label_p2_status.setText(f"✓ Capturado: {self.angle_raw_point2:.2f}° crudo → {self.angle_ref_point2}° real")
-        self.label_p2_status.setStyleSheet("color: #27ae60; padding: 5px;")
-        
-        self.btn_finish.setEnabled(True)
-    
-    def _finish_calibration(self):
-        """Finaliza la calibración."""
-        if self.calibration_mode == 1:
-            if self.angle_raw_point1 is None:
-                QMessageBox.warning(self, "Error", "Debes capturar el Punto 1.")
-                return
-        else:
-            if self.angle_raw_point1 is None or self.angle_raw_point2 is None:
-                QMessageBox.warning(self, "Error", "Debes capturar ambos puntos.")
-                return
-        
-        self.calibration_done = True
-        self.accept()
-    
-    def get_calibration_data(self) -> Dict:
-        """Retorna los datos de calibración."""
-        return {
-            'mode': self.calibration_mode,
-            'angle_raw_point1': self.angle_raw_point1,
-            'angle_ref_point1': self.angle_ref_point1,
-            'angle_raw_point2': self.angle_raw_point2,
-            'angle_ref_point2': self.angle_ref_point2
-        }
+from .calibration_dialog import CalibrationDialog
 
 
 class RealtimeAnalysisWindow(QMainWindow):
@@ -282,7 +76,7 @@ class RealtimeAnalysisWindow(QMainWindow):
         self.current_time_imu = 0.0
         
         # Ángulo crudo actual (para calibración)
-        self.current_raw_angle = 0.0
+        self.current_raw_angle = self.angle_calculator.last_uncalibrated_angle
         
         # Estadísticas
         self.emg_count = 0
@@ -310,7 +104,8 @@ class RealtimeAnalysisWindow(QMainWindow):
         pg.setConfigOption('background', "#1E1F20") # Color de fondo oscuro
         pg.setConfigOption('foreground', '#E4E4E4') # Color de líneas y texto claro
         pg.setConfigOption('antialias', False) # Desactivar antialiasing para mejor rendimiento
-        pg.setConfigOption('useOpenGL', False) # Desactivar OpenGL para compatibilidad 
+        pg.setConfigOption('useOpenGL', True) # Activar OpenGL si está disponible para mejor rendimiento
+         
         
         # ========== GRÁFICAS ==========
         
@@ -613,7 +408,7 @@ class RealtimeAnalysisWindow(QMainWindow):
                 frame['timestamp_us']
             )
             
-            self.current_raw_angle = angle
+            self.current_raw_angle = self.angle_calculator.last_uncalibrated_angle
             
             self.time_imu[self.idx_imu] = t_sec
             self.data_angle[self.idx_imu] = angle
@@ -722,6 +517,7 @@ class RealtimeAnalysisWindow(QMainWindow):
         self.emg_ch0_processor.reset()
         self.emg_ch1_processor.reset()
         self.angle_calculator.reset()
+        self.current_raw_angle = self.angle_calculator.last_uncalibrated_angle
     
     def _open_calibration(self):
         """Abre el diálogo de calibración."""
@@ -744,12 +540,18 @@ class RealtimeAnalysisWindow(QMainWindow):
             
             # Aplicar calibración
             if calib_data['mode'] == 1:
+                if calib_data.get('angle_raw_point1') is not None:
+                    raw_point = float(calib_data['angle_raw_point1'])
+                    self.angle_calculator.angle = raw_point
+                    self.angle_calculator.last_uncalibrated_angle = raw_point
                 self.angle_calculator.calibrate_one_point(calib_data['angle_ref_point1'])
             else:
                 self.angle_calculator.calibrate_two_points(
                     calib_data['angle_raw_point1'], calib_data['angle_ref_point1'],
                     calib_data['angle_raw_point2'], calib_data['angle_ref_point2']
                 )
+
+            self.current_raw_angle = self.angle_calculator.last_uncalibrated_angle
             
             QMessageBox.information(
                 self,

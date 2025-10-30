@@ -1,6 +1,7 @@
 """Ventana para editar los parámetros de configuración del sistema."""
 from __future__ import annotations
 
+import sys
 from typing import Any, Dict, Iterable
 
 from PyQt6.QtCore import Qt, pyqtSignal
@@ -99,6 +100,8 @@ class SettingsWindow(QDialog):
         self._layout = cfg.get_settings_layout()
         self._values = cfg.get_settings()
         self._editors: Dict[str, QWidget] = {}
+        self._camera_entries: list[tuple[int, str]] = []
+        self._camera_scan_error: str | None = None
 
         self._build_ui()
         self._populate_from_values()
@@ -159,33 +162,89 @@ class SettingsWindow(QDialog):
             widget = QLabel(self._format_value(key, value))
             widget.setEnabled(False)
         else:
-            value_type = meta.get("type")
-            if value_type == "int":
-                widget = QSpinBox()
-                widget.setRange(int(meta.get("min", -10**9)), int(meta.get("max", 10**9)))
-                widget.setSingleStep(int(meta.get("step", 1)))
-            elif value_type == "float":
-                widget = QDoubleSpinBox()
-                widget.setDecimals(4)
-                widget.setRange(float(meta.get("min", -10**6)), float(meta.get("max", 10**6)))
-                widget.setSingleStep(float(meta.get("step", 0.1)))
-            elif value_type == "choice":
-                widget = QComboBox()
-                for option in meta.get("options", []):
-                    widget.addItem(str(option), option)
-            elif value_type == "color":
-                widget = ColorPicker()
-            elif value_type == "bytes":
-                widget = QLineEdit(self._format_bytes(value))
-                widget.setPlaceholderText("A5 5A")
+            if key == "AUTO_CALIB_CAMERA_INDEX":
+                widget = self._create_camera_selector(value)
             else:
-                widget = QLineEdit(str(value) if value is not None else "")
+                value_type = meta.get("type")
+                if value_type == "int":
+                    widget = QSpinBox()
+                    widget.setRange(int(meta.get("min", -10**9)), int(meta.get("max", 10**9)))
+                    widget.setSingleStep(int(meta.get("step", 1)))
+                elif value_type == "float":
+                    widget = QDoubleSpinBox()
+                    widget.setDecimals(4)
+                    widget.setRange(float(meta.get("min", -10**6)), float(meta.get("max", 10**6)))
+                    widget.setSingleStep(float(meta.get("step", 0.1)))
+                elif value_type == "choice":
+                    widget = QComboBox()
+                    for option in meta.get("options", []):
+                        widget.addItem(str(option), option)
+                elif value_type == "color":
+                    widget = ColorPicker()
+                elif value_type == "bytes":
+                    widget = QLineEdit(self._format_bytes(value))
+                    widget.setPlaceholderText("A5 5A")
+                else:
+                    widget = QLineEdit(str(value) if value is not None else "")
 
         if description:
             widget.setToolTip(description)
 
+        widget.setProperty("config_key", key)
+
         self._editors[key] = widget
         return widget
+
+    def _create_camera_selector(self, current_value: Any) -> QComboBox:
+        combo = QComboBox()
+        self._camera_entries, self._camera_scan_error = self._discover_cameras()
+
+        if self._camera_entries:
+            for index, label in self._camera_entries:
+                combo.addItem(f"{label} (#{index})", index)
+        else:
+            placeholder = self._camera_scan_error or "No se detectaron cámaras disponibles"
+            combo.addItem(placeholder, None)
+            model = combo.model()
+            if hasattr(model, "item"):
+                placeholder_item = model.item(0)
+                if placeholder_item is not None:
+                    placeholder_item.setEnabled(False)
+
+        if current_value is not None and combo.findData(current_value) < 0:
+            combo.addItem(f"Índice configurado ({current_value})", current_value)
+
+        if self._camera_scan_error:
+            combo.setToolTip(self._camera_scan_error)
+
+        return combo
+
+    def _discover_cameras(self, limit: int = 8) -> tuple[list[tuple[int, str]], str | None]:
+        try:
+            import cv2  # type: ignore
+        except ImportError:
+            return [], "Instala 'opencv-python' para detectar cámaras automáticamente."
+
+        cameras: list[tuple[int, str]] = []
+        backend = getattr(cv2, "CAP_DSHOW", None) if sys.platform.startswith("win") else None
+
+        for index in range(limit):
+            if backend is not None:
+                capture = cv2.VideoCapture(index, backend)
+            else:
+                capture = cv2.VideoCapture(index)
+
+            if not capture or not capture.isOpened():
+                if capture:
+                    capture.release()
+                continue
+
+            cameras.append((index, f"Cámara {index}"))
+            capture.release()
+
+        if not cameras:
+            return [], "No se detectaron cámaras disponibles"
+        return cameras, None
 
     # ------------------------------------------------------------------
     # Sincronización valores <-> UI
@@ -207,9 +266,13 @@ class SettingsWindow(QDialog):
             widget.setValue(float(value))
             return
         if isinstance(widget, QComboBox):
+            config_key = widget.property("config_key")
             idx = widget.findData(value)
             if idx < 0:
                 idx = widget.findText(str(value))
+            if idx < 0 and config_key == "AUTO_CALIB_CAMERA_INDEX" and value is not None:
+                widget.addItem(f"Índice configurado ({value})", value)
+                idx = widget.count() - 1
             if idx >= 0:
                 widget.setCurrentIndex(idx)
             return
