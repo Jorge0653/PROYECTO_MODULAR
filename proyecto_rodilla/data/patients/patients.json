@@ -1,0 +1,12 @@
+{
+    "patients": [
+        {
+            "patient_id": "1",
+            "name": "Messi"
+        },
+        {
+            "patient_id": "02",
+            "name": "Chop"
+        }
+    ]
+}

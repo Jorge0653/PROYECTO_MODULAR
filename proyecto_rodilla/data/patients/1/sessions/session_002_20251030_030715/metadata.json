@@ -1,0 +1,21 @@
+{
+    "session_id": "session_002_20251030_030715",
+    "patient_id": "1",
+    "session_number": 2,
+    "session_type": "Seguimiento",
+    "protocol": "Libre (grabaci\u00f3n continua)",
+    "date": "2025-10-30",
+    "time_start": "03:07:18",
+    "time_end": "03:08:08",
+    "duration_sec": 50,
+    "settings_snapshot": {
+        "EMG_FS": 1635.78,
+        "IMU_FS": 50,
+        "RMS_WINDOW_MS": 100,
+        "WINDOW_TIME_SEC": 5.0
+    },
+    "hardware_info": {
+        "serial_port": "COM3"
+    },
+    "clinical_notes": "fdsdsgdsgesgsdgds"
+}

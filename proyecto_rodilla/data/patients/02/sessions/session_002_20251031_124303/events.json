@@ -1,0 +1,18 @@
+{
+    "events": [
+        {
+            "timestamp_us": 60471792,
+            "timestamp_relative_sec": 23.891000000000076,
+            "type": "m\u00e1ximo_flexi\u00f3n",
+            "description": "M\u00e1ximo flexi\u00f3n",
+            "user_marked": true
+        },
+        {
+            "timestamp_us": 64008332,
+            "timestamp_relative_sec": 27.422000000000025,
+            "type": "dolor_reportado",
+            "description": "Dolor reportado",
+            "user_marked": true
+        }
+    ]
+}

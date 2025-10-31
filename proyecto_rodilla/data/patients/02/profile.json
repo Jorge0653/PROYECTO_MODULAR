@@ -1,0 +1,11 @@
+{
+    "patient_id": "02",
+    "name": "Chop",
+    "age": 9,
+    "sex": "Otro",
+    "weight": 6.0,
+    "height": 40.0,
+    "pathology": "autismo",
+    "affected_side": "Izquierdo",
+    "last_updated": "2025-10-31T12:43:37"
+}

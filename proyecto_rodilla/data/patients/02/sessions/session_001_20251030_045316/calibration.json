@@ -1,0 +1,11 @@
+{
+    "imu_calibration": {
+        "calibrated": true,
+        "offset": -92.4371444665174,
+        "scale": 0.9854907816331859
+    },
+    "emg_calibration": {
+        "mvc_ch0": 0.09805571795120961,
+        "mvc_ch1": 0.08354952046662215
+    }
+}

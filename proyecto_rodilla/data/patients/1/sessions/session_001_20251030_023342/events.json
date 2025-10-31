@@ -1,0 +1,46 @@
+{
+    "events": [
+        {
+            "timestamp_us": 203902687,
+            "timestamp_relative_sec": 10.9220000000023,
+            "type": "inicio_repetici\u00f3n",
+            "description": "Inicio repetici\u00f3n",
+            "user_marked": true
+        },
+        {
+            "timestamp_us": 215251401,
+            "timestamp_relative_sec": 22.26599999999962,
+            "type": "dolor_reportado",
+            "description": "Dolor reportado",
+            "user_marked": true
+        },
+        {
+            "timestamp_us": 215664048,
+            "timestamp_relative_sec": 22.68800000000192,
+            "type": "dolor_reportado",
+            "description": "Dolor reportado",
+            "user_marked": true
+        },
+        {
+            "timestamp_us": 215863342,
+            "timestamp_relative_sec": 22.89099999999962,
+            "type": "dolor_reportado",
+            "description": "Dolor reportado",
+            "user_marked": true
+        },
+        {
+            "timestamp_us": 218054345,
+            "timestamp_relative_sec": 25.07800000000134,
+            "type": "cambio_ejercicio",
+            "description": "Cambio ejercicio",
+            "user_marked": true
+        },
+        {
+            "timestamp_us": 221350632,
+            "timestamp_relative_sec": 28.375,
+            "type": "personalizado",
+            "description": "eee",
+            "user_marked": true
+        }
+    ]
+}

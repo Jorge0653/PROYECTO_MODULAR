@@ -1,0 +1,21 @@
+{
+    "session_id": "session_001_20251030_023342",
+    "patient_id": "1",
+    "session_number": 1,
+    "session_type": "Evaluaci\u00f3n inicial",
+    "protocol": "Libre (grabaci\u00f3n continua)",
+    "date": "2025-10-30",
+    "time_start": "02:33:45",
+    "time_end": "02:35:25",
+    "duration_sec": 99,
+    "settings_snapshot": {
+        "EMG_FS": 1635.78,
+        "IMU_FS": 50,
+        "RMS_WINDOW_MS": 100,
+        "WINDOW_TIME_SEC": 5.0
+    },
+    "hardware_info": {
+        "serial_port": "COM3"
+    },
+    "clinical_notes": "MEEEEEEEEEEEEEEEEEEEEEESSIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII"
+}

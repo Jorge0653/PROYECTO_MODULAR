@@ -1,0 +1,11 @@
+{
+    "patient_id": "1",
+    "name": "Messi",
+    "age": 38,
+    "sex": "Masculino",
+    "weight": 70.0,
+    "height": 169.0,
+    "pathology": "Autismo",
+    "affected_side": "Izquierdo",
+    "last_updated": "2025-10-30T03:08:08"
+}

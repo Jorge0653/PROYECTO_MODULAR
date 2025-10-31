@@ -1,0 +1,11 @@
+{
+    "imu_calibration": {
+        "calibrated": false,
+        "offset": 0.0,
+        "scale": 1.0
+    },
+    "emg_calibration": {
+        "mvc_ch0": null,
+        "mvc_ch1": null
+    }
+}

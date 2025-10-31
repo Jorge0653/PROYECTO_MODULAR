@@ -1,0 +1,25 @@
+{
+    "events": [
+        {
+            "timestamp_us": 138147208,
+            "timestamp_relative_sec": 0.9840000000003783,
+            "type": "inicio_repetici\u00f3n",
+            "description": "Inicio repetici\u00f3n",
+            "user_marked": true
+        },
+        {
+            "timestamp_us": 149064324,
+            "timestamp_relative_sec": 11.906000000002678,
+            "type": "m\u00e1ximo_flexi\u00f3n",
+            "description": "M\u00e1ximo flexi\u00f3n",
+            "user_marked": true
+        },
+        {
+            "timestamp_us": 152730465,
+            "timestamp_relative_sec": 15.562000000001717,
+            "type": "m\u00e1ximo_extensi\u00f3n",
+            "description": "M\u00e1ximo extensi\u00f3n",
+            "user_marked": true
+        }
+    ]
+}

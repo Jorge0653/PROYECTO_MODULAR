@@ -18,6 +18,8 @@ class MainWindow(QMainWindow):
         
         # Referencia a ventanas secundarias
         self.realtime_window = None
+        self.recording_window = None
+        self.data_analysis_window = None
         self.settings_window = None
         
         self._create_ui()
@@ -79,21 +81,21 @@ class MainWindow(QMainWindow):
         )
         btn_exercises.clicked.connect(self._show_not_implemented)
         main_layout.addWidget(container_exercises)
-        # 3. Grabación de Sesión (PLACEHOLDER)
+        # 3. Grabación de Sesión
         btn_record, container_record = self._create_menu_button(
             "💾  Grabación de Sesión",
             "Grabar datos completos para análisis posterior",
-            enabled=False
+            enabled=True
         )
-        btn_record.clicked.connect(self._show_not_implemented)
+        btn_record.clicked.connect(self._open_session_recording)
         main_layout.addWidget(container_record)
         # 4. Análisis Offline (PLACEHOLDER)
         btn_offline, container_offline = self._create_menu_button(
             "📂  Análisis de Datos Guardados",
             "Procesar y analizar sesiones previamente grabadas",
-            enabled=False
+            enabled=True
         )
-        btn_offline.clicked.connect(self._show_not_implemented)
+        btn_offline.clicked.connect(self._open_data_analysis)
         main_layout.addWidget(container_offline)
         # 5. Configuración del sistema
         btn_config, container_config = self._create_menu_button(
@@ -214,6 +216,28 @@ class MainWindow(QMainWindow):
             self.realtime_window.raise_()
             self.realtime_window.activateWindow()
 
+    def _open_session_recording(self):
+        """Abre la ventana de grabación de sesión."""
+        from .session_recording import SessionRecordingWindow
+
+        if self.recording_window is None or not self.recording_window.isVisible():
+            self.recording_window = SessionRecordingWindow(self)
+            self.recording_window.show()
+        else:
+            self.recording_window.raise_()
+            self.recording_window.activateWindow()
+
+    def _open_data_analysis(self) -> None:
+        """Abre la ventana de análisis de sesiones guardadas."""
+        from .data_analysis_window import SessionAnalysisWindow
+
+        if self.data_analysis_window is None or not self.data_analysis_window.isVisible():
+            self.data_analysis_window = SessionAnalysisWindow(self)
+            self.data_analysis_window.show()
+        else:
+            self.data_analysis_window.raise_()
+            self.data_analysis_window.activateWindow()
+
     def _open_settings(self):
         """Abre el panel de configuración."""
         from .settings_window import SettingsWindow
@@ -250,6 +274,10 @@ class MainWindow(QMainWindow):
             # Cerrar ventanas secundarias si están abiertas
             if self.realtime_window and self.realtime_window.isVisible():
                 self.realtime_window.close()
+            if self.recording_window and self.recording_window.isVisible():
+                self.recording_window.close()
+            if self.data_analysis_window and self.data_analysis_window.isVisible():
+                self.data_analysis_window.close()
             if self.settings_window and self.settings_window.isVisible():
                 self.settings_window.close()
             
@@ -260,6 +288,10 @@ class MainWindow(QMainWindow):
         # Asegurar que ventanas secundarias se cierren
         if self.realtime_window and self.realtime_window.isVisible():
             self.realtime_window.close()
+        if self.recording_window and self.recording_window.isVisible():
+            self.recording_window.close()
+        if self.data_analysis_window and self.data_analysis_window.isVisible():
+            self.data_analysis_window.close()
         if self.settings_window and self.settings_window.isVisible():
             self.settings_window.close()
         
@@ -276,7 +308,16 @@ class MainWindow(QMainWindow):
         """Reinicia módulos activos tras guardar configuración desde el menú principal."""
         if self.realtime_window and self.realtime_window.isVisible():
             self._reload_realtime_analysis()
+        if self.data_analysis_window and self.data_analysis_window.isVisible():
+            self._reload_data_analysis()
 
     def _on_settings_dialog_closed(self, _: int) -> None:
         """Limpia la referencia al cerrar el diálogo de configuración."""
         self.settings_window = None
+
+    def _reload_data_analysis(self) -> None:
+        """Recrea la ventana de análisis offline aplicando los ajustes más recientes."""
+        if self.data_analysis_window:
+            self.data_analysis_window.close()
+            self.data_analysis_window = None
+        QTimer.singleShot(0, self._open_data_analysis)
